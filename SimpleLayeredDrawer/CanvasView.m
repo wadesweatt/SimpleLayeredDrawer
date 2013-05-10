@@ -185,7 +185,6 @@
     NSLog(@"%s Received invalid circle", __PRETTY_FUNCTION__);
 }
 
-#pragma mark -
 - (void)drawRect:(NSRect)dirtyRect {
 	[[NSColor whiteColor] setFill];
 	NSRectFill(self.bounds);
@@ -436,7 +435,7 @@
                 [self drawCircleAtPoint:destinationPoint color:self.strokeColor select:selected];
             }
 			
-			// Selected path preview
+////////////// Selected path preview
 			if (mouseInView) {
 				if (path == self.selectedPath && [path canContainArc] && !dragged) {
 					// show preview of next line
@@ -448,9 +447,16 @@
 						NSPoint lastPoint = NSZeroPoint;
 						NSPoint nextPoint = NSZeroPoint;
 						if (selectedIndex > -1 && selectedIndex < [path.points count]) {
-							lastPoint = [self scaledPointForPoint:[[path.points objectAtIndex:selectedIndex] point]];
+							RVPoint *lastPointObject = [path.points objectAtIndex:selectedIndex];
+							lastPoint = [self scaledPointForPoint:[lastPointObject point]];
 							[previewPath moveToPoint:lastPoint];
-							[previewPath lineToPoint:mouseLocation];
+							
+							if (lastPointObject.hasFrontControlPoint ) {
+								NSPoint lastPointFrontControlPoint = [self scaledPointForPoint:lastPointObject.frontControlPoint];
+								[previewPath curveToPoint:mouseLocation controlPoint1:lastPointFrontControlPoint controlPoint2:lastPointFrontControlPoint];
+							} else {
+								[previewPath lineToPoint:mouseLocation];
+							}
 						}
 						
 						if ([path isClosed]) {
@@ -460,7 +466,7 @@
 								[previewPath moveToPoint:nextPoint];
 								[previewPath lineToPoint:mouseLocation];
 								
-								// any point except the first one is selected
+							// any point except the first one is selected
 							} else if (selectedIndex > -1) {
 								nextPoint = [self scaledPointForPoint:[[path.points objectAtIndex:(selectedIndex - 1)] point]];
 								[previewPath moveToPoint:nextPoint];
@@ -470,7 +476,7 @@
 						
 						[previewPath stroke];
 						
-						// ctrl - show preview of arc around a point
+					// ctrl - show preview of arc around a point - SELECT TOOL ONLY
 					} else if (NSControlKeyMask & [NSEvent modifierFlags] && drawingMode == RVDrawingModeSelectTool) {
 						if ([path.points count] > 1) {
 							NSPoint selectedPoint = NSZeroPoint;

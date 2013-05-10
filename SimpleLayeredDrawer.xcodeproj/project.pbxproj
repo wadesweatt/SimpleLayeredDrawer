@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		657DF221173D2EFB008B7AD8 /* RVGroupsTableView.m in Sources */ = {isa = PBXBuildFile; fileRef = 657DF220173D2EFB008B7AD8 /* RVGroupsTableView.m */; };
 		65CFD0EF173CA082006C0653 /* NonActivePanel.m in Sources */ = {isa = PBXBuildFile; fileRef = 65CFD0EE173CA082006C0653 /* NonActivePanel.m */; };
 		65D4ED96173A9E5E00ACE675 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 65D4ED95173A9E5E00ACE675 /* Cocoa.framework */; };
 		65D4EDA0173A9E5E00ACE675 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 65D4ED9E173A9E5E00ACE675 /* InfoPlist.strings */; };
@@ -33,6 +34,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		657DF21F173D2EFB008B7AD8 /* RVGroupsTableView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RVGroupsTableView.h; sourceTree = "<group>"; };
+		657DF220173D2EFB008B7AD8 /* RVGroupsTableView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RVGroupsTableView.m; sourceTree = "<group>"; };
 		65CFD0ED173CA082006C0653 /* NonActivePanel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NonActivePanel.h; sourceTree = "<group>"; };
 		65CFD0EE173CA082006C0653 /* NonActivePanel.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = NonActivePanel.m; sourceTree = "<group>"; };
 		65D4ED92173A9E5E00ACE675 /* SimpleLayeredDrawer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SimpleLayeredDrawer.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -163,6 +166,8 @@
 			children = (
 				65D4EDC8173A9F2300ACE675 /* CanvasView.h */,
 				65D4EDC9173A9F2300ACE675 /* CanvasView.m */,
+				657DF21F173D2EFB008B7AD8 /* RVGroupsTableView.h */,
+				657DF220173D2EFB008B7AD8 /* RVGroupsTableView.m */,
 				65D4EDB3173A9E7E00ACE675 /* RVPathTableView.h */,
 				65D4EDB4173A9E7E00ACE675 /* RVPathTableView.m */,
 				65D4EDB5173A9E7E00ACE675 /* RVPathRowView.h */,
@@ -306,6 +311,7 @@
 				65D4EDDB173AA47900ACE675 /* NSColor+MyColorAdditions.m in Sources */,
 				65D4EDDF173ADB6900ACE675 /* ActionAlertView.m in Sources */,
 				65CFD0EF173CA082006C0653 /* NonActivePanel.m in Sources */,
+				657DF221173D2EFB008B7AD8 /* RVGroupsTableView.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

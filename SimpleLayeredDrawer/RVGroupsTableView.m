@@ -7,22 +7,31 @@
 //
 
 #import "RVGroupsTableView.h"
+#import "KeyCodes.h"
 
 @implementation RVGroupsTableView
 
-- (id)initWithFrame:(NSRect)frame
-{
-    self = [super initWithFrame:frame];
-    if (self) {
-        // Initialization code here.
+- (void) keyDown:(NSEvent *)theEvent {
+    int key = [theEvent keyCode];
+    if (key == KEY_CODE_BACKWARD_DELETE || key == KEY_CODE_FORWARD_DELETE) {
+        if (_dataSource) {
+            [_dataSource delete:self];
+        } else {
+            [_delegate delete:self];
+        }
+        return;
     }
-    
-    return self;
+    [super keyDown:theEvent];
 }
 
-- (void)drawRect:(NSRect)dirtyRect
+// private method for overiding selection color in table cell
+- (id)_highlightColorForCell:(NSCell *)cell
 {
-    // Drawing code here.
+    if ([self.window firstResponder] == self) {
+		return [NSColor orangeColor];
+	} else {
+		return [NSColor lightGrayColor];
+	}
 }
 
 @end
