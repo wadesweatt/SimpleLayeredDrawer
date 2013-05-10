@@ -1,0 +1,7 @@
+//
+// Prefix header for all source files of the 'SimpleLayeredDrawer' target in the 'SimpleLayeredDrawer' project
+//
+
+#ifdef __OBJC__
+	#import <Cocoa/Cocoa.h>
+#endif
