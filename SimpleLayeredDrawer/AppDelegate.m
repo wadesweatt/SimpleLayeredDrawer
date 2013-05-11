@@ -16,7 +16,7 @@
 	[_pathEditorController setCanvas:self.drawingView];
 	[_pathEditorController setGroupsTableView:self.groupTableView];
 	[_pathEditorController setPathsTableView:self.pathTableView];
-	//[_scaleSlider bind:NSValueBinding toObject:_pathEditorController withKeyPath:@"scale" options:nil];
+	[_scaleSlider bind:NSValueBinding toObject:_pathEditorController withKeyPath:@"scale" options:nil];
 }
 
 - (IBAction) addGroup:(id)sender {

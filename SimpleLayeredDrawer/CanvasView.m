@@ -28,9 +28,6 @@
     if (self) {
 		mouseInView = NO;
 		self.lineWidth = 2.0;
-		self.strokeColor = [NSColor orangeColor];
-		self.fillColor = [NSColor lightGrayColor];
-		self.selectedColor = [NSColor orangeColor];
 		self.shouldFill = NO;
 		self.shouldStroke = YES;
 		self.shouldShowSelection = YES;
@@ -48,10 +45,17 @@
     return self;
 }
 
+- (void) awakeFromNib {
+	[self.coordinatesTextField setStringValue:@""];
+	self.strokeColor = [NSColor orangeColor];
+	self.fillColor = [NSColor blackColor];
+	self.selectedColor = [NSColor orangeColor];
+}
+
 
 #pragma mark - SETTERS
 
-- (void) setScale:(NSInteger)scaleAmount {
+- (void) setScale:(CGFloat)scaleAmount {
 	if (scale != scaleAmount) {
 		scale = scaleAmount;
 		[self setNeedsDisplay:YES];
@@ -86,6 +90,13 @@
     }
 }
 
+- (void) setFillColor:(NSColor *)fillColor {
+	if (_fillColor != fillColor) {
+		_fillColor = fillColor;
+		[self setNeedsDisplay:YES];
+	}
+}
+
 - (void) setSelectedColor:(NSColor *)selectedColor {
     if (_selectedColor != selectedColor) {
         _selectedColor = selectedColor;
@@ -115,16 +126,18 @@
 }
 
 - (void) drawCircleAtPoint:(NSPoint)point color:(NSColor *)fillColor select:(BOOL)shouldSelect {
-    NSRect rect = NSMakeRect(point.x - 3.0*scale, point.y - 3.0*scale, 6.0*scale, 6.0*scale);
+	CGFloat scaleAmount = scale;
+	if (scaleAmount > 1.25) scaleAmount = 1.25;
+    NSRect rect = NSMakeRect(point.x - 3.0*scaleAmount, point.y - 3.0*scaleAmount, 6.0*scaleAmount, 6.0*scaleAmount);
     [fillColor setFill];
 	
     NSBezierPath *path = [NSBezierPath bezierPath];
     [path setLineWidth:self.lineWidth];
     [path moveToPoint:NSMakePoint(NSMinX(rect),NSMidY(rect))];
-    [path appendBezierPathWithArcFromPoint:NSMakePoint(NSMinX(rect),NSMaxY(rect)) toPoint:NSMakePoint(NSMidX(rect),NSMaxY(rect)) radius:3*scale];
-    [path appendBezierPathWithArcFromPoint:NSMakePoint(NSMaxX(rect),NSMaxY(rect)) toPoint:NSMakePoint(NSMaxX(rect),NSMidY(rect)) radius:3*scale];
-    [path appendBezierPathWithArcFromPoint:NSMakePoint(NSMaxX(rect),NSMinY(rect)) toPoint:NSMakePoint(NSMidX(rect),NSMinY(rect)) radius:3*scale];
-    [path appendBezierPathWithArcFromPoint:NSMakePoint(NSMinX(rect),NSMinY(rect)) toPoint:NSMakePoint(NSMinX(rect),NSMidY(rect)) radius:3*scale];
+    [path appendBezierPathWithArcFromPoint:NSMakePoint(NSMinX(rect),NSMaxY(rect)) toPoint:NSMakePoint(NSMidX(rect),NSMaxY(rect)) radius:3*scaleAmount];
+    [path appendBezierPathWithArcFromPoint:NSMakePoint(NSMaxX(rect),NSMaxY(rect)) toPoint:NSMakePoint(NSMaxX(rect),NSMidY(rect)) radius:3*scaleAmount];
+    [path appendBezierPathWithArcFromPoint:NSMakePoint(NSMaxX(rect),NSMinY(rect)) toPoint:NSMakePoint(NSMidX(rect),NSMinY(rect)) radius:3*scaleAmount];
+    [path appendBezierPathWithArcFromPoint:NSMakePoint(NSMinX(rect),NSMinY(rect)) toPoint:NSMakePoint(NSMinX(rect),NSMidY(rect)) radius:3*scaleAmount];
     [path closePath];
 	
     if (shouldSelect) {
@@ -1063,6 +1076,7 @@
         }
         [self setNeedsDisplay:YES];
     }
+	[self updateCoordinatesTextFieldWithMouseLocation:mouseLocation];
 }
 
 - (void) mouseEntered:(NSEvent *)theEvent {
@@ -1073,6 +1087,7 @@
     } else {
         [[NSCursor arrowCursor] set];
     }
+	[self.coordinatesTextField setHidden:NO];
 }
 
 - (void) mouseExited:(NSEvent *)theEvent {
@@ -1080,6 +1095,7 @@
 	mouseInView = NO;
     [[NSCursor arrowCursor] set];
 	[self setNeedsDisplay:YES];
+	[self.coordinatesTextField setHidden:YES];
 }
 
 - (void) rightMouseDown:(NSEvent *)theEvent {
@@ -1306,6 +1322,10 @@
 	[alertView presentWithText:actionMessage];
 }
 
+- (void) updateCoordinatesTextFieldWithMouseLocation:(NSPoint)location {
+	NSString *coordinatesString = [NSString stringWithFormat:@"x: %.2f y: %.2f", location.x, location.y];
+	[self.coordinatesTextField setStringValue:coordinatesString];
+}
 
 #pragma mark - UNDO
 

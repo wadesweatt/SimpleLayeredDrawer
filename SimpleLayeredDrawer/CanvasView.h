@@ -45,10 +45,11 @@ typedef enum _RVDrawingMode {
 @property (nonatomic, assign) NSInteger lineWidth;
 @property (nonatomic, strong) NSColor *strokeColor, *fillColor, *selectedColor;
 @property (nonatomic, assign) BOOL shouldFill, shouldStroke, shouldShowSelection;
+@property (weak) IBOutlet NSTextField *coordinatesTextField;
 
 - (IBAction)changeTool:(id)sender;
 - (void) showActionNotificationWithText:(NSString *)actionMessage;
 - (void) setSelectedIndex:(NSInteger)index;
-- (void) setScale:(NSInteger)scaleAmount;
+- (void) setScale:(CGFloat)scaleAmount;
 
 @end
