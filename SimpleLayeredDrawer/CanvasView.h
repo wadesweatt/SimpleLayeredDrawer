@@ -21,13 +21,13 @@ typedef enum _RVDrawingMode {
 } RVDrawingMode;
 
 @interface CanvasView : NSView {
-	// Mask Editor
     NSPoint mouseStartPoint;
     NSPoint mouseLocation;
     NSInteger selectedIndex;
     // dragging
     BOOL dragged, draggedPathBounds, createdRectOrCircle, pointWasSelected, pathWasSelected, closePathOnClick, mouseInView;
-    NSPoint lastDragPoint; // for dragging shapes
+    NSPoint lastDragPoint, rectangleCenter; // for dragging shapes
+	
     
 	NSMutableArray *pointsArchive; // for undo
     RVPoint *arcPoint1, *arcPoint2; // temp for arc creation

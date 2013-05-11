@@ -738,7 +738,7 @@
 		// Arc creation in selection mode
         // ctrl
         // create an arc from the last two points
-        if (NSControlKeyMask & [NSEvent modifierFlags] && selectedIndex > -1 && selectedIndex < self.selectedPath.points.count) {
+        if (NSControlKeyMask & [NSEvent modifierFlags] && selectedIndex > -1 && selectedIndex < self.selectedPath.points.count && self.selectedPath.canContainArc) {
 			[self registerUndoForPathChangesWithName:@"Create Arc"];
 			[self showActionNotificationWithText:@"Create Arc"];
 			
@@ -764,6 +764,13 @@
                     [self setNeedsDisplay:YES];
                     //NSLog(@"selected point at index: %d", i);
                     pointWasSelected = YES;
+					
+					// since holding ctrl preserves center point, we need to know the original center of any rectangle before it gets dragged
+					if (self.selectedPath.isRectangle) {
+						CGRect bounds = self.selectedPath.bounds;
+						rectangleCenter.x = bounds.origin.x + bounds.size.width/2;
+						rectangleCenter.y = bounds.origin.y + bounds.size.height/2;
+					}					
                     return;
                 }
                 // if none, check near any control points
@@ -840,61 +847,123 @@
                     NSPoint bottomLeft = bottomLeftObject.point;
                     // which corner was dragged?
                     NSUInteger index = [self.selectedPath.points indexOfObject:pointDragged];
+					
+					// ctrl - preserve the center point of the rectangle
+					BOOL ctrlPressed = NO;
+					if (NSControlKeyMask & [NSEvent modifierFlags]) {
+						ctrlPressed = YES;
+					}
                     switch (index) {
                         case 0: // bottom right
                             bottomRight.x += distanceVectorEndpoint.x;
                             bottomRight.y += distanceVectorEndpoint.y;
-                            bottomRightObject.point = bottomRight;
 							
-                            topRight.x = bottomRight.x;
-                            topRight.y = topLeft.y; // won't change
-                            topRightObject.point = topRight;
-							
-                            bottomLeft.x = topLeft.x; // won't change
-                            bottomLeft.y = bottomRight.y;
-                            bottomLeftObject.point = bottomLeft;
+							if (ctrlPressed) {
+								bottomLeft.x = rectangleCenter.x - (bottomRight.x - rectangleCenter.x);
+								bottomLeft.y = bottomRight.y;
+								
+								topRight.x = bottomRight.x;
+								topRight.y = rectangleCenter.y - (bottomRight.y - rectangleCenter.y);
+								
+								topLeft.x = bottomLeft.x;
+								topLeft.y = topRight.y;
+								
+							} else {
+								topRight.x = bottomRight.x;
+								topRight.y = topLeft.y; // won't change
+								
+								bottomLeft.x = topLeft.x; // won't change
+								bottomLeft.y = bottomRight.y;
+							}
+							topLeftObject.point = topLeft;
+							topRightObject.point = topRight;
+							bottomLeftObject.point = bottomLeft;
+							bottomRightObject.point = bottomRight;
                             break;
 							
                         case 1: // top right
-                            topRight.x += distanceVectorEndpoint.x;
-                            topRight.y += distanceVectorEndpoint.y;
-                            topRightObject.point = topRight;
+							topRight.x += distanceVectorEndpoint.x;
+							topRight.y += distanceVectorEndpoint.y;
 							
-                            bottomRight.x = topRight.x;
-                            bottomRight.y = bottomLeft.y; // won't change
-                            bottomRightObject.point = bottomRight;
-							
-                            topLeft.x = bottomLeft.x; // won't change
-                            topLeft.y = topRight.y;
-                            topLeftObject.point = topLeft;
+							if (ctrlPressed) {
+								topLeft.x = rectangleCenter.x - (topRight.x - rectangleCenter.x);
+								topLeft.y = topRight.y;
+								
+								bottomRight.x = topRight.x;
+								bottomRight.y = rectangleCenter.y - (topRight.y - rectangleCenter.y);
+								
+								bottomLeft.x = topLeft.x;
+								bottomLeft.y = bottomRight.y;
+								
+							} else {
+								bottomRight.x = topRight.x;
+								bottomRight.y = bottomLeft.y; // won't change
+								
+								topLeft.x = bottomLeft.x; // won't change
+								topLeft.y = topRight.y;
+							}
+							topLeftObject.point = topLeft;
+							topRightObject.point = topRight;
+							bottomLeftObject.point = bottomLeft;
+							bottomRightObject.point = bottomRight;
                             break;
 							
                         case 2: // top left
-                            topLeft.x += distanceVectorEndpoint.x;
-                            topLeft.y += distanceVectorEndpoint.y;
-                            topLeftObject.point = topLeft;
+							topLeft.x += distanceVectorEndpoint.x;
+							topLeft.y += distanceVectorEndpoint.y;
 							
-                            bottomLeft.x = topLeft.x;
-                            bottomLeft.y = bottomRight.y; //won't change
-                            bottomLeftObject.point = bottomLeft;
+							if (ctrlPressed) {
+								topRight.x = rectangleCenter.x - (topLeft.x - rectangleCenter.x);
+								topRight.y = topLeft.y;
+								
+								bottomLeft.x = topLeft.x;
+								bottomLeft.y = rectangleCenter.y - (topLeft.y - rectangleCenter.y);
+								
+								bottomRight.x = topRight.x;
+								bottomRight.y = bottomLeft.y;
+								
+							} else {
+								
+								bottomLeft.x = topLeft.x;
+								bottomLeft.y = bottomRight.y; //won't change
+								
+								topRight.x = bottomRight.x; //won't change
+								topRight.y = topLeft.y;
+							}
 							
-                            topRight.x = bottomRight.x; //won't change
-                            topRight.y = topLeft.y;
-                            topRightObject.point = topRight;
+							topLeftObject.point = topLeft;
+							topRightObject.point = topRight;
+							bottomLeftObject.point = bottomLeft;
+							bottomRightObject.point = bottomRight;
                             break;
 							
                         case 3: // bottom left
-                            bottomLeft.x += distanceVectorEndpoint.x;
-                            bottomLeft.y += distanceVectorEndpoint.y;
-                            bottomLeftObject.point = bottomLeft;
+							bottomLeft.x += distanceVectorEndpoint.x;
+							bottomLeft.y += distanceVectorEndpoint.y;
 							
-                            topLeft.x = bottomLeft.x;
-                            topLeft.y = topRight.y; // won't change
-                            topLeftObject.point = topLeft;
+							if (ctrlPressed) {
+								bottomRight.x = rectangleCenter.x - (bottomLeft.x - rectangleCenter.x);
+								bottomRight.y = bottomRight.y;
+								
+								topLeft.x = bottomRight.x;
+								topLeft.y = rectangleCenter.y - (bottomLeft.y - rectangleCenter.y);
+								
+								topRight.x = bottomRight.x;
+								topRight.y = topLeft.y;
+								
+							} else {
+								
+								topLeft.x = bottomLeft.x;
+								topLeft.y = topRight.y; // won't change
+								
+								bottomRight.x = topRight.x; // won't change
+								bottomRight.y = bottomLeft.y;
+							}
 							
-                            bottomRight.x = topRight.x; // won't change
-                            bottomRight.y = bottomLeft.y;
-                            bottomRightObject.point = bottomRight;
+							topLeftObject.point = topLeft;
+							topRightObject.point = topRight;
+							bottomLeftObject.point = bottomLeft;
+							bottomRightObject.point = bottomRight;
                             break;
                     }
                     break;
@@ -1066,6 +1135,8 @@
         [[NSNotificationCenter defaultCenter] postNotificationName:RVReloadMaskTable object:nil];
         [self setNeedsDisplay:YES];
     }
+	
+	rectangleCenter = NSZeroPoint;
 	
     // clear out path after creating a circle or rectangle
     if ((self.selectedPath.isCircle || self.selectedPath.isRectangle) && createdRectOrCircle) {
