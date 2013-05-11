@@ -1,9 +1,9 @@
 //
-//  NSColor.m
-//  ProPresenter
+//  NSColor+MyColorAdditions.m
+//  SimpleLayeredDrawer
 //
-//  Created by Rich Salvatierra on 12/4/09.
-//  Copyright 2009 Renewed Vision LLC. All rights reserved.
+//  Created by J. Wade Sweatt on 10/4/12.
+//  Copyright 2012 J. Wade Sweatt. All rights reserved.
 //
 
 #import "NSColor+MyColorAdditions.h"

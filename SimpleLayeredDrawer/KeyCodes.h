@@ -1,7 +1,5 @@
 /*
- *  @file RVKeyCodes.h
- *  @author Jeremy W. Sherman (Big Nerd Ranch, Inc.)
- *  @date 2009-10-24
+ *  @file KeyCodes.h
  */
 
 

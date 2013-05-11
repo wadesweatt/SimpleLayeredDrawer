@@ -1,9 +1,9 @@
 //
 //  RVPVPMaskActionAlertView.h
-//  ProVideoPlayer 2
+//  SimpleLayeredDrawer
 //
 //  Created by Wade Sweatt on 5/3/13.
-//  Copyright (c) 2013 Renewed Vision. All rights reserved.
+//  Copyright (c) 2013 J. Wade Sweatt. All rights reserved.
 //
 
 #import <Cocoa/Cocoa.h>

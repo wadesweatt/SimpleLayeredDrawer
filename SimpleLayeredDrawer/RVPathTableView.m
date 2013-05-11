@@ -1,9 +1,9 @@
 //
 //  RVPathTableView.m
-//  ProVideoPlayer 2
+//  SimpleLayeredDrawer
 //
 //  Created by Wade Sweatt on 1/22/13.
-//  Copyright (c) 2013 Renewed Vision. All rights reserved.
+//  Copyright (c) 2013 J. Wade Sweatt. All rights reserved.
 //
 
 #import "RVPathTableView.h"

@@ -1,9 +1,9 @@
 //
 //  RVPathCellView.h
-//  SimpleMaskDrawer
+//  SimpleLayeredDrawer
 //
 //  Created by Wade Sweatt on 1/18/13.
-//  Copyright (c) 2013 Renewed Vision. All rights reserved.
+//  Copyright (c) 2013 J. Wade Sweatt. All rights reserved.
 //
 
 #import <Cocoa/Cocoa.h>

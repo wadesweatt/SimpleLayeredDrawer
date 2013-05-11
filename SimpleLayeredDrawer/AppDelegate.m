@@ -19,11 +19,11 @@
 	//[_scaleSlider bind:NSValueBinding toObject:_pathEditorController withKeyPath:@"scale" options:nil];
 }
 
-- (IBAction) addMask:(id)sender {
+- (IBAction) addGroup:(id)sender {
     [self.pathEditorController createNewGroup];
 }
 
-- (IBAction) deleteMask:(id)sender {
+- (IBAction) deleteGroup:(id)sender {
     [self.pathEditorController deleteSelectedGroup];
 }
 
