@@ -759,7 +759,7 @@
                 // first, check near the actual point first
                 if ((ABS(mouseLocation.x - thisPoint.x)) < RVSELECTION_RADIUS && (ABS(mouseLocation.y - thisPoint.y)) < RVSELECTION_RADIUS) {
                     selectedIndex = i;
-                    thisPointObject.frontControlPointSelected = NO; // reset this
+                    thisPointObject.frontControlPointSelected = NO; // reset these
                     thisPointObject.behindControlPointSelected = NO;
                     [self setNeedsDisplay:YES];
                     //NSLog(@"selected point at index: %d", i);
@@ -822,6 +822,7 @@
     dragged = YES;
 	
     switch (drawingMode) {
+#pragma mark Select Tool Drag
         case RVDrawingModeSelectTool: {
             if (selectedIndex > -1 && [self.selectedPath.points count] > selectedIndex && pointWasSelected) {
                 RVPoint *pointDragged = [self.selectedPath.points objectAtIndex:selectedIndex];
@@ -896,10 +897,9 @@
                             bottomRightObject.point = bottomRight;
                             break;
                     }
-					
                     break;
 					
-					// circle
+				// circle
                 } else if (self.selectedPath.isCircle) {
                     if ([self.selectedPath.points count] != 2) break;
                     NSPoint distanceVectorEndpoint = NSMakePoint(dragPoint.x - lastDragPoint.x, dragPoint.y - lastDragPoint.y);
@@ -914,7 +914,7 @@
 					
                     break;
 					
-					// plain path
+				// plain path
                 } else {
                     if (pointDragged.frontControlPointSelected) pointDragged.frontControlPoint = dragPoint;
                     else if (pointDragged.behindControlPointSelected) pointDragged.behindControlPoint = dragPoint;
@@ -936,7 +936,7 @@
                     break;
                 }
                 
-				// dragging an entire path
+			// dragging an entire path
             } else if (pathWasSelected) {
                 NSPoint distanceVectorEndpoint = NSMakePoint(dragPoint.x - lastDragPoint.x, dragPoint.y - lastDragPoint.y);
                 for (RVPoint *eachPointObject in self.selectedPath.points) {
@@ -960,6 +960,7 @@
             break;
         }
 			
+#pragma mark Pen Tool Drag
         case RVDrawingModePenTool: {
             if ([self.selectedPath.points count] < 2) break;
             NSPoint distanceVectorEndpoint = NSMakePoint(dragPoint.x - lastDragPoint.x, dragPoint.y - lastDragPoint.y);
@@ -979,33 +980,53 @@
             break;
         }
 			
+#pragma mark Rectangle Tool Drag
         case RVDrawingModeRectangleTool: {
             if ([self.selectedPath.points count] != 4) break;
+			
             NSPoint distanceVectorEndpoint = NSMakePoint(dragPoint.x - lastDragPoint.x, dragPoint.y - lastDragPoint.y);
-            RVPoint *bottomRightObject = [self.selectedPath.points objectAtIndex:0];
+			RVPoint *topLeftObject = [self.selectedPath.points objectAtIndex:2];
             RVPoint *topRightObject = [self.selectedPath.points objectAtIndex:1];
-            RVPoint *topLeftObject = [self.selectedPath.points objectAtIndex:2];
             RVPoint *bottomLeftObject = [self.selectedPath.points objectAtIndex:3];
-            NSPoint bottomRight = bottomRightObject.point;
-            NSPoint topRight = topRightObject.point;
-            NSPoint topLeft = topLeftObject.point;
+			RVPoint *bottomRightObject = [self.selectedPath.points objectAtIndex:0];
+			NSPoint topLeft = topLeftObject.point;
+			NSPoint topRight = topRightObject.point;
             NSPoint bottomLeft = bottomLeftObject.point;
+			NSPoint bottomRight = bottomRightObject.point;
 			
-            topLeft.x += distanceVectorEndpoint.x;
-            topLeft.y += distanceVectorEndpoint.y;
+			// this is the point we are actually dragging
+			topLeft.x += distanceVectorEndpoint.x;
+			topLeft.y += distanceVectorEndpoint.y;
+			
+			// ctrl - preserve center point
+			if (NSControlKeyMask & [NSEvent modifierFlags]) {
+				bottomLeft.x = topLeft.x;
+				bottomLeft.y = mouseStartPoint.y - (topLeft.y - mouseStartPoint.y);
+				
+				topRight.x = mouseStartPoint.x - (topLeft.x - mouseStartPoint.x);
+				topRight.y = topLeft.y;
+				
+				bottomRight.x = topRight.x;
+				bottomRight.y = bottomLeft.y;
+				
+			// no modifier - expand in direction of mouse
+			} else {
+				bottomLeft.x = topLeft.x;
+				bottomLeft.y = bottomRight.y; //won't change
+				
+				topRight.x = bottomRight.x; //won't change
+				topRight.y = topLeft.y;
+			}
+			
             topLeftObject.point = topLeft;
+			topRightObject.point = topRight;
+			bottomLeftObject.point = bottomLeft;
+            bottomRightObject.point = bottomRight;
 			
-            bottomLeft.x = topLeft.x;
-            bottomLeft.y = bottomRight.y; //won't change
-            bottomLeftObject.point = bottomLeft;
-			
-            topRight.x = bottomRight.x; //won't change
-            topRight.y = topLeft.y;
-            topRightObject.point = topRight;
-            
             break;
         }
 			
+#pragma mark Circle Tool Drag
         case RVDrawingModeCircleTool: {
             if ([self.selectedPath.points count] != 2) break;
             NSPoint distanceVectorEndpoint = NSMakePoint(dragPoint.x - lastDragPoint.x, dragPoint.y - lastDragPoint.y);
