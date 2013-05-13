@@ -28,9 +28,9 @@
 - (id)_highlightColorForCell:(NSCell *)cell
 {
     if ([self.window firstResponder] == self) {
-		return [NSColor orangeColor];
+		return [[NSColor orangeColor] colorWithAlphaComponent:0.8];
 	} else {
-		return [NSColor lightGrayColor];
+		return [[NSColor grayColor] colorWithAlphaComponent:0.8];
 	}
 }
 

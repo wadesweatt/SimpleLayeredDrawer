@@ -768,8 +768,8 @@
 					// since holding ctrl preserves center point, we need to know the original center of any rectangle before it gets dragged
 					if (self.selectedPath.isRectangle) {
 						CGRect bounds = self.selectedPath.bounds;
-						rectangleCenter.x = bounds.origin.x + bounds.size.width/2;
-						rectangleCenter.y = bounds.origin.y + bounds.size.height/2;
+						rectangleCenter.x = (bounds.origin.x + bounds.size.width/2) / scale;
+						rectangleCenter.y = (bounds.origin.y + bounds.size.height/2) / scale;
 					}					
                     return;
                 }
@@ -782,6 +782,7 @@
                         thisPointObject.frontControlPointSelected = YES;
                         thisPointObject.behindControlPointSelected = NO;
                         pointWasSelected = YES;
+						break;
                     } else {
                         thisPointObject.frontControlPointSelected = NO;
                     }
@@ -796,6 +797,7 @@
                         thisPointObject.frontControlPointSelected = NO;
                         thisPointObject.behindControlPointSelected = YES;
                         pointWasSelected = YES;
+						break;
                     } else {
                         thisPointObject.behindControlPointSelected = NO;
                     }
