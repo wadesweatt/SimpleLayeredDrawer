@@ -877,10 +877,6 @@
 								bottomLeft.x = topLeft.x; // won't change
 								bottomLeft.y = bottomRight.y;
 							}
-							topLeftObject.point = topLeft;
-							topRightObject.point = topRight;
-							bottomLeftObject.point = bottomLeft;
-							bottomRightObject.point = bottomRight;
                             break;
 							
                         case 1: // top right
@@ -904,10 +900,6 @@
 								topLeft.x = bottomLeft.x; // won't change
 								topLeft.y = topRight.y;
 							}
-							topLeftObject.point = topLeft;
-							topRightObject.point = topRight;
-							bottomLeftObject.point = bottomLeft;
-							bottomRightObject.point = bottomRight;
                             break;
 							
                         case 2: // top left
@@ -932,11 +924,6 @@
 								topRight.x = bottomRight.x; //won't change
 								topRight.y = topLeft.y;
 							}
-							
-							topLeftObject.point = topLeft;
-							topRightObject.point = topRight;
-							bottomLeftObject.point = bottomLeft;
-							bottomRightObject.point = bottomRight;
                             break;
 							
                         case 3: // bottom left
@@ -945,9 +932,9 @@
 							
 							if (ctrlPressed) {
 								bottomRight.x = rectangleCenter.x - (bottomLeft.x - rectangleCenter.x);
-								bottomRight.y = bottomRight.y;
+								bottomRight.y = bottomLeft.y;
 								
-								topLeft.x = bottomRight.x;
+								topLeft.x = bottomLeft.x;
 								topLeft.y = rectangleCenter.y - (bottomLeft.y - rectangleCenter.y);
 								
 								topRight.x = bottomRight.x;
@@ -961,13 +948,12 @@
 								bottomRight.x = topRight.x; // won't change
 								bottomRight.y = bottomLeft.y;
 							}
-							
-							topLeftObject.point = topLeft;
-							topRightObject.point = topRight;
-							bottomLeftObject.point = bottomLeft;
-							bottomRightObject.point = bottomRight;
                             break;
                     }
+					topLeftObject.point = topLeft;
+					topRightObject.point = topRight;
+					bottomLeftObject.point = bottomLeft;
+					bottomRightObject.point = bottomRight;
                     break;
 					
 				// circle

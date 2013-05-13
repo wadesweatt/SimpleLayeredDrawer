@@ -25,8 +25,7 @@
 }
 
 // private method for overiding selection color in table cell
-- (id)_highlightColorForCell:(NSCell *)cell
-{
+- (id)_highlightColorForCell:(NSCell *)cell {
     if ([self.window firstResponder] == self) {
 		return [[NSColor orangeColor] colorWithAlphaComponent:0.8];
 	} else {
