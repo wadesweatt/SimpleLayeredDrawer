@@ -1329,7 +1329,6 @@
 									<string key="NSFrame">{{17, 20}, {166, 17}}</string>
 									<reference key="NSSuperview" ref="108317095"/>
 									<reference key="NSWindow"/>
-									<reference key="NSNextKeyView"/>
 									<string key="NSReuseIdentifierKey">_NS:1535</string>
 									<bool key="NSEnabled">YES</bool>
 									<object class="NSTextFieldCell" key="NSCell" id="310089504">
@@ -1411,7 +1410,6 @@
 							<string key="NSFrame">{{18, 19}, {167, 25}}</string>
 							<reference key="NSSuperview" ref="566523201"/>
 							<reference key="NSWindow"/>
-							<reference key="NSNextKeyView"/>
 							<string key="NSReuseIdentifierKey">_NS:9</string>
 							<bool key="NSEnabled">YES</bool>
 							<object class="NSSliderCell" key="NSCell" id="790310481">
@@ -1948,7 +1946,6 @@
 									<string key="NSFrame">{{1, 119}, {223, 15}}</string>
 									<reference key="NSSuperview" ref="419938495"/>
 									<reference key="NSWindow"/>
-									<reference key="NSNextKeyView"/>
 									<string key="NSReuseIdentifierKey">_NS:60</string>
 									<bool key="NSAllowsLogicalLayoutDirection">NO</bool>
 									<int key="NSsFlags">1</int>
@@ -2083,7 +2080,6 @@
 				<string key="NSFrameSize">{134, 17}</string>
 				<reference key="NSSuperview"/>
 				<reference key="NSWindow"/>
-				<reference key="NSNextKeyView"/>
 				<string key="NSReuseIdentifierKey">_NS:1535</string>
 				<bool key="NSEnabled">YES</bool>
 				<object class="NSTextFieldCell" key="NSCell" id="867530004">
@@ -2094,7 +2090,7 @@
 					<string key="NSCellIdentifier">_NS:1535</string>
 					<reference key="NSControlView" ref="463007782"/>
 					<reference key="NSBackgroundColor" ref="1040154663"/>
-					<reference key="NSTextColor" ref="1040154663"/>
+					<reference key="NSTextColor" ref="62716640"/>
 				</object>
 				<bool key="NSAllowsLogicalLayoutDirection">NO</bool>
 			</object>
