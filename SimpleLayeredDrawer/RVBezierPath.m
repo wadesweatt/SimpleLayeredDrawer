@@ -23,6 +23,7 @@
     newPath.points = [NSMutableArray array];
     newPath.isCircle = NO;
     newPath.isRectangle = NO;
+	//newPath.draggingHandle = RVBezierPathBoundsHandleNone;
     return newPath;
 }
 
@@ -32,22 +33,68 @@
     }
 }
 
-- (BOOL)canContainArc {
+- (BOOL) canContainArc {
     return (!self.isRectangle && !self.isCircle);
 }
 
-- (CGFloat)radius {
-    if (self.isCircle && [self.points count] == 2) {
-        NSPoint center = [(RVPoint *)[self.points objectAtIndex:0] point];
-        NSPoint controlPoint = [(RVPoint *)[self.points lastObject] point];
-        CGFloat distance = sqrtf( powf((controlPoint.x - center.x), 2) +  powf((controlPoint.y - center.y), 2) );
-        return distance;
-    }
-    return 0.0;
-}
+//- (RVBezierPathBoundsHandle) boundsHandleForPoint:(RVPoint *)point {
+//	if (self.isRectangle || NSEqualPoints(point.point, NSZeroPoint)) return RVBezierPathBoundsHandleNone;
+//	
+//	NSPoint location = point.point;
+//	CGFloat radius = 10.0;
+//	CGRect bounds = self.bounds;
+//	CGPoint bottomLeft = bounds.origin;
+//	CGPoint bottomRight = CGPointMake(bounds.origin.x + bounds.size.width, bounds.origin.y);
+//	CGPoint topLeft = CGPointMake(bottomLeft.x, bottomLeft.y + bounds.size.height);
+//	CGPoint topRight = CGPointMake(bottomRight.x, topLeft.y);
+//	
+//	if ((ABS(location.x - bottomLeft.x)) < radius && (ABS(location.y - bottomLeft.y)) < radius) {
+//		return RVBezierPathBoundsHandleBottomLeft;
+//	} else if ((ABS(location.x - bottomRight.x)) < radius && (ABS(location.y - bottomRight.y)) < radius) {
+//		return RVBezierPathBoundsHandleBottomRight;
+//	} else if ((ABS(location.x - topLeft.x)) < radius && (ABS(location.y - topLeft.y)) < radius) {
+//		return RVBezierPathBoundsHandleTopLeft;
+//	} else if ((ABS(location.x - topRight.x)) < radius && (ABS(location.y - topRight.y)) < radius) {
+//		return RVBezierPathBoundsHandleTopRight;
+//	}
+//	return RVBezierPathBoundsHandleNone;
+//}
+
+//- (void) scaleAndTranslatePointsWithHandle:(RVBezierPathBoundsHandle)handle byTranslationPoint:(NSPoint)translation {
+//	CGFloat xChange = translation.x;
+//	CGFloat yChange = translation.y;
+//	CGFloat midX = self.bounds.origin.x + self.bounds.size.width/2;
+//	CGFloat midY = self.bounds.origin.y + self.bounds.size.width/2;
+//	
+//	switch (handle) {
+//		case RVBezierPathBoundsHandleBottomLeft: {
+//			for (RVPoint *eachPoint in self.points) {
+//				
+//			}
+//			break;
+//		}
+//		case RVBezierPathBoundsHandleBottomRight: {
+//			
+//			break;
+//		}
+//		case RVBezierPathBoundsHandleTopLeft: {
+//			
+//			break;
+//		}
+//		case RVBezierPathBoundsHandleTopRight: {
+//			
+//			break;
+//		}
+//		case RVBezierPathBoundsHandleNone:
+//			break;
+//	}
+//}
+
+
+#pragma mark - BOILER PLATE
 
 - (NSString *) description {
-    return [NSString stringWithFormat:@"RVBezierPath: points:%ld shouldClose:%d", [self.points count], self.shouldClose];
+    return [NSString stringWithFormat:@"RVBezierPath: points:%ld shouldClose:%@", [self.points count], self.shouldClose?@"YES":@"NO"];
 }
 
 - (void) copyPropertiesFrom:(RVBezierPath *)other {
@@ -63,6 +110,8 @@
 	return copy;
 }
 
+
+#pragma mark - CONSTRUCT
 // Used for rendering and in the editor table view cells
 // simply creates (but not draws) from the points in the points array
 // does not draw points, control points, selection, etc. - just the path
@@ -149,6 +198,19 @@
 
         if ([self isClosed]) [self closePath];
     }
+}
+
+
+#pragma mark - CIRCLE
+
+- (CGFloat)radius {
+    if (self.isCircle && [self.points count] == 2) {
+        NSPoint center = [(RVPoint *)[self.points objectAtIndex:0] point];
+        NSPoint controlPoint = [(RVPoint *)[self.points lastObject] point];
+        CGFloat distance = sqrtf( powf((controlPoint.x - center.x), 2) +  powf((controlPoint.y - center.y), 2) );
+        return distance;
+    }
+    return 0.0;
 }
 
 - (void) circlePathForPath:(RVBezierPath *)path {

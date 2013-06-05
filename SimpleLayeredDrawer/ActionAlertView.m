@@ -48,11 +48,14 @@
 		[self setHidden:YES];
 		showing = NO;
 		[timer invalidate];
+		if (self.completionBlock) dispatch_async(dispatch_get_main_queue(), self.completionBlock);
 	}];
 }
 
-- (void) presentWithText:(NSString *)text {
+- (void) presentWithText:(NSString *)text completionHandler:(void (^)(void))callback {
 	self.alertText = text;
+	self.completionBlock = callback;
+	
 	CGRect originalFrame = [self frame];
 	CGSize textSize = [_alertText sizeWithAttributes:_fontAttributes];
 	// resize if the text is wider than the frame that was given to us

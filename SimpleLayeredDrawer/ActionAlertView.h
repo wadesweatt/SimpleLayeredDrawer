@@ -19,5 +19,6 @@
 	BOOL showing;
 }
 @property (nonatomic, strong) NSString *alertText;
-- (void) presentWithText:(NSString *)text;
+@property (copy) void (^completionBlock)(void);
+- (void) presentWithText:(NSString *)text completionHandler:(void(^)(void))callback;
 @end

@@ -1405,7 +1405,9 @@
 	CGSize boundsSize = [self bounds].size;
 	ActionAlertView *alertView = [[ActionAlertView alloc] initWithFrame:NSMakeRect((boundsSize.width - 90) / 2, 10, 90, 30)];
 	[self addSubview:alertView];
-	[alertView presentWithText:actionMessage];
+	[alertView presentWithText:actionMessage completionHandler:^{
+		[alertView removeFromSuperview];
+	}];
 }
 
 - (void) updateCoordinatesTextFieldWithMouseLocation:(NSPoint)location {

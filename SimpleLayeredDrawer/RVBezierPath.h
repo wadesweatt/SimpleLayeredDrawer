@@ -14,11 +14,20 @@
 
 #import <Cocoa/Cocoa.h>
 
+typedef enum _RVBezierPathBoundsHandle {
+	RVBezierPathBoundsHandleTopLeft,
+    RVBezierPathBoundsHandleTopRight,
+    RVBezierPathBoundsHandleBottomLeft,
+    RVBezierPathBoundsHandleBottomRight,
+	RVBezierPathBoundsHandleNone
+} RVBezierPathBoundsHandle;
+
 @interface RVBezierPath : NSBezierPath <NSCopying>
 
 @property (nonatomic, strong) NSMutableArray *points;
 @property (nonatomic, assign, getter = isClosed) BOOL shouldClose;
 @property (nonatomic, assign) BOOL draggingBounds, isRectangle, isCircle;
+//@property (nonatomic, assign) RVBezierPathBoundsHandle draggingHandle;
 
 + (RVBezierPath *) path;
 
