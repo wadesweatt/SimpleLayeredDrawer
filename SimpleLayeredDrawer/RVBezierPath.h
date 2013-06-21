@@ -27,11 +27,12 @@ typedef enum _RVBezierPathBoundsHandle {
 @property (nonatomic, strong) NSMutableArray *points;
 @property (nonatomic, assign, getter = isClosed) BOOL shouldClose;
 @property (nonatomic, assign) BOOL draggingBounds, isRectangle, isCircle;
-//@property (nonatomic, assign) RVBezierPathBoundsHandle draggingHandle;
+@property (nonatomic, assign) CGFloat feather;
+//@property (nonatomic, assign) RVBezierPathBoundsHandle boundsHandle;
 
 + (RVBezierPath *) path;
 
-- (BOOL)canContainArc;
+- (BOOL) canContainArc;
 - (CGFloat) radius;
 - (void) createSelfFromPointArray;
 

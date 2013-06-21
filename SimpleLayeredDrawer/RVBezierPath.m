@@ -23,14 +23,9 @@
     newPath.points = [NSMutableArray array];
     newPath.isCircle = NO;
     newPath.isRectangle = NO;
+	newPath.feather = 0;
 	//newPath.draggingHandle = RVBezierPathBoundsHandleNone;
     return newPath;
-}
-
-- (void) setPoints:(NSMutableArray *)points {
-    if (_points != points) {
-        _points = points;
-    }
 }
 
 - (BOOL) canContainArc {
@@ -203,7 +198,7 @@
 
 #pragma mark - CIRCLE
 
-- (CGFloat)radius {
+- (CGFloat) radius {
     if (self.isCircle && [self.points count] == 2) {
         NSPoint center = [(RVPoint *)[self.points objectAtIndex:0] point];
         NSPoint controlPoint = [(RVPoint *)[self.points lastObject] point];

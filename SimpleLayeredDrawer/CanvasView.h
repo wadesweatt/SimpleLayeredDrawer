@@ -15,12 +15,10 @@
 #import <Cocoa/Cocoa.h>
 #import "Protocols.h"
 
-@class RVPVPRenderLayoutScaleView;
-@class RVPoint;
-@class RVBezierPath;
+@class RVPoint, RVBezierPath;
 
 typedef enum _RVDrawingMode {
-	RVDrawingModeSelectTool,
+	RVDrawingModeSelectTool = 0,
     RVDrawingModePenTool,
     RVDrawingModeRectangleTool,
     RVDrawingModeCircleTool
@@ -33,19 +31,19 @@ typedef enum _RVDrawingMode {
     // dragging
     BOOL dragged, draggedPathBounds, createdRectOrCircle, pointWasSelected, pathWasSelected, closePathOnClick, mouseInView;
     NSPoint lastDragPoint, rectangleCenter; // for dragging shapes
-	
     
 	NSMutableArray *pointsArchive; // for undo
-    RVPoint *arcPoint1, *arcPoint2; // temp for arc creation
 
     // mode - selection, pen, rectangle, or circle
     IBOutlet NSSegmentedControl *maskModeControl;
     RVDrawingMode drawingMode;
 	
+	IBOutlet NSSlider *featherAdjustmentSlider;
+	
 	CGFloat scale;
 }
 
-@property (nonatomic, strong) id <RVMaskEditorDataSource> pathEditorDelegate;
+@property (nonatomic, strong) id <RVPathEditorDataSource> pathEditorDelegate;
 @property (nonatomic, strong) RVBezierPath *selectedPath;
 @property (nonatomic, strong) RVBezierPath *lastSelectedPath;
 @property (nonatomic, assign) NSInteger lineWidth;

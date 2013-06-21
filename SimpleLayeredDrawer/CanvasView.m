@@ -21,9 +21,9 @@
 #import "RVPathGroup.h"
 #import "ActionAlertView.h"
 
-#define RVSELECTION_RADIUS 10 // for point selection in mask editor and corner pinning
-#define RVPATHPREVIEW_LINE_WIDTH 3.0
-#define RVCONTROL_POINT_LINE_WIDTH 2.0
+#define RVSELECTION_RADIUS 10 // for point selection
+#define RVPATHPREVIEW_LINE_WIDTH 3.0 // holding control to make an arc with select tool
+#define RVCONTROL_POINT_LINE_WIDTH 2.0 // arc control point line width
 #define RVPATHBOUNDS_LINE_WIDTH 1.0
 #define RVPATHBOUNDS_SELECTED_LINE_WIDTH 3.0
 
@@ -58,6 +58,14 @@
 	self.selectedColor = [NSColor orangeColor];
 }
 
+- (IBAction) selectedPathFeatherDidChange:(id)sender {
+	CGFloat val = floor([sender doubleValue] * 100) / 100;
+	if (self.selectedPath) {
+		[self.selectedPath setFeather:val];
+		[self setNeedsDisplay:YES];
+	}
+}
+
 
 #pragma mark - SETTERS
 
@@ -78,6 +86,7 @@
         _selectedPath = selectedPath;
         selectedIndex = 0;
 		pointsArchive = [[NSMutableArray alloc] initWithArray:_selectedPath.points copyItems:YES];
+		[featherAdjustmentSlider setDoubleValue:_selectedPath.feather];
         [self setNeedsDisplay:YES];
     }
 }
@@ -146,8 +155,8 @@
     [path appendBezierPathWithArcFromPoint:NSMakePoint(NSMinX(rect),NSMinY(rect)) toPoint:NSMakePoint(NSMinX(rect),NSMidY(rect)) radius:3*scaleAmount];
     [path closePath];
 	
-    if (shouldSelect) {
-        [self.selectedColor set];
+    if (!shouldSelect) {
+        [fillColor set];
 		[path fill];
     }
 	[fillColor set];
@@ -183,8 +192,15 @@
             [path lineToPoint:firstPoint]; // close it out
 			
 			if (self.shouldFill) {
-				[self.fillColor setFill];
-				[path fill];
+				if ([path feather] > 0) {
+					CGFloat gradientLocation = 1.0 - [path feather];
+					NSGradient *featherGradient = [[NSGradient alloc] initWithColorsAndLocations:self.fillColor, gradientLocation,
+												   [NSColor clearColor], 1.0, nil];
+					[featherGradient drawInBezierPath:path relativeCenterPosition:NSMakePoint(0, 0)];
+				} else {
+					[self.fillColor setFill];
+					[path fill];
+				}
 			}
 			
 			if (self.shouldStroke) {
@@ -432,8 +448,15 @@
 			
             // fill
             if (self.shouldFill) {
-                [self.fillColor setFill];
-                [path fill];
+				if ([path feather] > 0) {
+					CGFloat gradientLocation = 1.0 - [path feather];
+					NSGradient *featherGradient = [[NSGradient alloc] initWithColorsAndLocations:self.fillColor, gradientLocation,
+																								 [NSColor clearColor], 1.0, nil];
+					[featherGradient drawInBezierPath:path relativeCenterPosition:NSMakePoint(0, 0)];
+				} else {
+					[self.fillColor setFill];
+					[path fill];
+				}
             }
 			
             // stroke
@@ -502,14 +525,14 @@
 							NSPoint behindPoint = NSZeroPoint;
 							if (selectedIndex > -1 && selectedIndex < [path.points count]) {
 								// if selection, get selected point and the points before and after it
-								arcPoint1 = [path.points objectAtIndex:selectedIndex];
-								selectedPoint = arcPoint1.point;
+								RVPoint *selectedPointObject = [path.points objectAtIndex:selectedIndex];
+								selectedPoint = selectedPointObject.point;
 								
 								NSInteger secondIndex = NSNotFound;
 								if (selectedIndex == 0) secondIndex = [path.points count] - 1;
 								else secondIndex = selectedIndex - 1;
-								arcPoint2 = [path.points objectAtIndex:secondIndex];
-								behindPoint = arcPoint2.point;
+								RVPoint *behindPointObject = [path.points objectAtIndex:secondIndex];
+								behindPoint = behindPointObject.point;
 								
 								selectedPoint = [self scaledPointForPoint:selectedPoint];
 								behindPoint = [self scaledPointForPoint:behindPoint];
@@ -526,8 +549,8 @@
 								[self.strokeColor setStroke];
 								[previewPath setLineWidth:RVPATHPREVIEW_LINE_WIDTH];
 								[previewPath moveToPoint:behindPoint];
-								if ([arcPoint2 hasFrontControlPoint]) {
-									NSPoint arcPoint2FrontControlPoint = [self scaledPointForPoint:arcPoint2.frontControlPoint];
+								if ([behindPointObject hasFrontControlPoint]) {
+									NSPoint arcPoint2FrontControlPoint = [self scaledPointForPoint:behindPointObject.frontControlPoint];
 									[previewPath curveToPoint:selectedPoint controlPoint1:arcPoint2FrontControlPoint controlPoint2:vectorACEndpoint];
 								} else {
 									[previewPath curveToPoint:selectedPoint controlPoint1:vectorACEndpoint controlPoint2:vectorACEndpoint];
@@ -549,7 +572,7 @@
 										[previewPath curveToPoint:inFrontPoint controlPoint1:vectorABEndpoint controlPoint2:vectorABEndpoint];
 									}
 									[previewPath stroke];
-									// or if last point is selected and the path is closed
+								// or if last point is selected and the path is closed
 								} else if ([path isClosed] && selectedIndex == ([path.points count] - 1)) {
 									RVPoint *inFrontPointObject = [path.points objectAtIndex:0];
 									NSPoint inFrontPoint = [self scaledPointForPoint:inFrontPointObject.point];
@@ -596,13 +619,8 @@
 	// double click closes the current shape
 	if ([theEvent clickCount] == 2) {
 		if (drawingMode != RVDrawingModeSelectTool) {
-			[self.selectedPath setShouldClose:YES];
-			self.selectedPath = nil;
-			selectedIndex = -1;
-			closePathOnClick = NO;
-			[self setNeedsDisplay:YES];
-			[[NSCursor crosshairCursor] set];
 			[self showActionNotificationWithText:@"Close Path"];
+			[self changeTool:[NSNumber numberWithInteger:RVDrawingModeSelectTool] clearSelection:NO adjustControl:YES];
 		}
 		return;
 	}
@@ -668,10 +686,8 @@
                 }
 				
             } else {
-                [self.selectedPath setShouldClose:YES];
-                closePathOnClick = NO;
                 self.lastSelectedPath = self.selectedPath;
-                self.selectedPath = nil;
+				[self changeTool:[NSNumber numberWithInteger:RVDrawingModeSelectTool] clearSelection:NO adjustControl:YES];
 				[self showActionNotificationWithText:@"Close Path"];
             }
         }
@@ -836,7 +852,10 @@
     dragPoint = NSMakePoint((dragPoint.x) / scale, (dragPoint.y) / scale);
     dragged = YES;
 	
+	
     switch (drawingMode) {
+			
+			
 #pragma mark Select Tool Drag
         case RVDrawingModeSelectTool: {
             if (selectedIndex > -1 && [self.selectedPath.points count] > selectedIndex && pointWasSelected) {
@@ -1132,9 +1151,9 @@
 	
 	rectangleCenter = NSZeroPoint;
 	
-    // clear out path after creating a circle or rectangle
+    // move to select tool after creating a circle or rectangle
     if ((self.selectedPath.isCircle || self.selectedPath.isRectangle) && createdRectOrCircle) {
-        self.selectedPath = nil;
+		[self changeTool:[NSNumber numberWithInteger:RVDrawingModeSelectTool] clearSelection:NO adjustControl:YES];
     }
 }
 
@@ -1188,9 +1207,7 @@
 	// if drawing, this deselects the path
     if (drawingMode != RVDrawingModeSelectTool) {
         self.lastSelectedPath = self.selectedPath;
-		[self.selectedPath setShouldClose:YES];
-        self.selectedPath = nil;
-		[self setNeedsDisplay:YES];
+		[self changeTool:[NSNumber numberWithInteger:RVDrawingModeSelectTool] clearSelection:NO adjustControl:YES];
 		[self showActionNotificationWithText:@"Close Path"];
     } else {
 		[super rightMouseDown:theEvent];
@@ -1236,17 +1253,15 @@
     CGFloat offset = 1.0;
     if ([theEvent wasShiftKeyDown]) offset = 10.0;
 	
-    // delete a point
+    // delete
     if (key == KEY_CODE_BACKWARD_DELETE || key == KEY_CODE_FORWARD_DELETE) {
+        // delete a circle/rectangle
         if (!self.selectedPath.canContainArc) { // circle or rectangle
 			[self registerUndoForMaskChangesWithName:self.selectedPath.isCircle? @"Delete Circle" : @"Delete Rectangle"];
-			
             [self.pathEditorDelegate.selectedGroup.paths removeObject:self.selectedPath];
-            [[NSNotificationCenter defaultCenter] postNotificationName:RVReloadMaskTable object:nil];
-            [self setNeedsDisplay:YES];
-            return;
-        }
-        if ([self.selectedPath.points count] > selectedIndex && selectedIndex > -1) {
+			
+		// delete a single point in a custom shape
+        } else if ([self.selectedPath.points count] > selectedIndex && selectedIndex > -1) {
             RVPoint *deletedPoint = [self.selectedPath.points objectAtIndex:selectedIndex];
 			
 			NSString *message = (deletedPoint.frontControlPointSelected || deletedPoint.behindControlPointSelected) ? @"Delete Control Point" : @"Delete Point";
@@ -1261,11 +1276,15 @@
                 [self.selectedPath.points removeObjectAtIndex:selectedIndex];
                 self.selectedPath.shouldClose = NO;
             }
-            [[NSNotificationCenter defaultCenter] postNotificationName:RVReloadMaskTable object:nil];
-            [self setNeedsDisplay:YES];
-        }
+		// delete an entire custom shape
+        } else if (selectedIndex == -1 && self.selectedPath) {
+			[self registerUndoForMaskChangesWithName:@"Delete Shape"];
+			[self.pathEditorDelegate.selectedGroup.paths removeObject:self.selectedPath];
+		}
+		[[NSNotificationCenter defaultCenter] postNotificationName:RVReloadMaskTable object:nil];
+		[self setNeedsDisplay:YES];
         return;
-		// move selected point by one pixel
+	// move selected point by one pixel
     } else if (key == KEY_CODE_LEFT_ARROW && selectedIndex > -1) {
         if ([self.selectedPath.points count] > selectedIndex) {
             RVPoint *movedPoint = [self.selectedPath.points objectAtIndex:selectedIndex];
@@ -1294,7 +1313,7 @@
             [self setNeedsDisplay:YES];
         }
         return;
-		// moving an entire shape
+	 // moving an entire shape
 	} else if((key == KEY_CODE_LEFT_ARROW || key == KEY_CODE_RIGHT_ARROW || key == KEY_CODE_UP_ARROW || key == KEY_CODE_DOWN_ARROW) && selectedIndex == -1) {
 		BOOL vertical = NO;
 		switch (key) {
@@ -1317,12 +1336,10 @@
 		[self setNeedsDisplay:YES];
 		return;
 		
-		// deselect the current shape and close it
+	// deselect the current shape and close it
     } else if (key == KEY_CODE_ESCAPE) {
-		[self.selectedPath setShouldClose:YES];
-		closePathOnClick = NO;
-		self.selectedPath = nil;
-		[self setNeedsDisplay:YES];
+		[self changeTool:[NSNumber numberWithInteger:RVDrawingModeSelectTool] clearSelection:NO adjustControl:YES];
+		[self showActionNotificationWithText:@"Close Path"];
 		return;
 	}
 }
@@ -1342,6 +1359,50 @@
     [self setNeedsDisplay:YES];
 }
 
+- (void) addControlPointsToSelection {
+	NSString *message = @"Smooth";
+	[self registerUndoForPathChangesWithName:message];
+	[self showActionNotificationWithText:message];
+	
+    RVPoint *pointObject = [self.selectedPath.points objectAtIndex:selectedIndex];
+	NSPoint point = pointObject.point;
+	
+	NSInteger behindIndex = selectedIndex - 1;
+	if (behindIndex > -1) {
+		RVPoint *behindPointObject = [self.selectedPath.points objectAtIndex:behindIndex];
+		NSPoint behindPoint = behindPointObject.point;
+		
+		CGFloat xVal = behindPoint.x>point.x ? behindPoint.x : point.x;
+		CGFloat yVal = behindPoint.x>point.x ? point.y : behindPoint.y;
+		
+		NSPoint behindControlPoint = NSMakePoint(xVal, yVal);
+		NSPoint distanceVector = NSMakePoint(behindControlPoint.x - point.x, behindControlPoint.y - point.y);
+		NSPoint frontControlPoint = NSMakePoint(point.x - distanceVector.x, point.y - distanceVector.y);
+		
+		[pointObject setBehindControlPoint:behindControlPoint];
+		[pointObject setFrontControlPoint:frontControlPoint];
+		[self setNeedsDisplay:YES];
+		return;
+	}
+	
+	NSInteger frontIndex = selectedIndex + 1;
+	if (frontIndex < self.selectedPath.points.count) {
+		RVPoint *inFrontPointObject = [self.selectedPath.points objectAtIndex:frontIndex];
+		NSPoint inFrontPoint = inFrontPointObject.point;
+		
+		CGFloat xVal = inFrontPoint.x>point.x ? inFrontPoint.x : point.x;
+		CGFloat yVal = inFrontPoint.x>point.x ? point.y : inFrontPoint.y;
+		
+		NSPoint frontControlPoint = NSMakePoint(xVal, yVal);
+		NSPoint distanceVector = NSMakePoint(frontControlPoint.x - point.x, frontControlPoint.y - point.y);
+		NSPoint behindControlPoint = NSMakePoint(point.x - distanceVector.x, point.y - distanceVector.y);
+		
+		[pointObject setBehindControlPoint:behindControlPoint];
+		[pointObject setFrontControlPoint:frontControlPoint];
+		[self setNeedsDisplay:YES];
+	}
+}
+
 - (NSMenu *) menuForEvent:(NSEvent *)event {
 	if (drawingMode == RVDrawingModeSelectTool && !(NSControlKeyMask & [NSEvent modifierFlags])) {
         selectedIndex = -1;
@@ -1355,10 +1416,16 @@
                 break;
             }
         }
-        if (selectedIndex > -1 && selectedIndex < [self.selectedPath.points count] && ([selectedPoint hasBehindControlPoint] || [selectedPoint hasFrontControlPoint])) {
-            NSMenu *menu = [[NSMenu alloc] initWithTitle:@"Flatten Menu"];
-            [menu addItemWithTitle:@"Flatten" action:@selector(removeControlPointsAtSelection) keyEquivalent:@""];
-			return menu;
+        if (selectedIndex > -1 && selectedIndex < [self.selectedPath.points count]) {
+			if ([selectedPoint hasBehindControlPoint] || [selectedPoint hasFrontControlPoint]) {
+				NSMenu *menu = [[NSMenu alloc] initWithTitle:@"Flatten Menu"];
+				[menu addItemWithTitle:@"Flatten" action:@selector(removeControlPointsAtSelection) keyEquivalent:@""];
+				return menu;
+			} else if (![selectedPoint hasBehindControlPoint] && ![selectedPoint hasFrontControlPoint]) {
+				NSMenu *menu = [[NSMenu alloc] initWithTitle:@"Smooth Menu"];
+				[menu addItemWithTitle:@"Smooth" action:@selector(addControlPointsToSelection) keyEquivalent:@""];
+				return menu;
+			}
         }
 	}
 	return nil;
@@ -1367,38 +1434,49 @@
 
 #pragma mark - ACTION
 
-- (IBAction)changeTool:(id)sender  {
-    NSInteger selection = [(NSSegmentedControl *)sender selectedSegment];
+- (void) changeTool:(id) sender clearSelection:(BOOL)shouldClearSelection adjustControl:(BOOL)shouldAdjustControl {
+	NSInteger selection = -1;
+	if ([sender isKindOfClass:[NSNumber class]]) {
+		selection = [sender integerValue];
+	} else {
+		selection = [(NSSegmentedControl *)sender selectedSegment];
+	}
 	
     switch (selection) {
         case 0:
             drawingMode = RVDrawingModeSelectTool;
             [self.selectedPath setShouldClose:YES];
             closePathOnClick = NO;
-            self.selectedPath = self.lastSelectedPath?:nil;
+            if (shouldClearSelection) self.selectedPath = self.lastSelectedPath?:nil;
             [[NSCursor arrowCursor] set];
             break;
         case 1:
             drawingMode = RVDrawingModePenTool;
-            self.selectedPath = nil;
+            if (shouldClearSelection) self.selectedPath = nil;
 			selectedIndex = -1;
             [[NSCursor crosshairCursor] set];
             break;
         case 2:
             drawingMode = RVDrawingModeRectangleTool;
-            self.selectedPath = nil;
+            if (shouldClearSelection) self.selectedPath = nil;
             selectedIndex = -1;
             [[NSCursor crosshairCursor] set];
             break;
         case 3:
             drawingMode = RVDrawingModeCircleTool;
-            self.selectedPath = nil;
+            if (shouldClearSelection) self.selectedPath = nil;
             selectedIndex = -1;
             [[NSCursor crosshairCursor] set];
             break;
     }
     
+	if (shouldAdjustControl) [maskModeControl setSelectedSegment:selection];
+	
     [self setNeedsDisplay:YES];
+}
+
+- (IBAction)changeTool:(id)sender  { // segmented control action
+	[self changeTool:sender clearSelection:NO adjustControl:NO];
 }
 
 - (void) showActionNotificationWithText:(NSString *)actionMessage {
@@ -1415,6 +1493,7 @@
 	[self.coordinatesTextField setStringValue:coordinatesString];
 }
 
+
 #pragma mark - UNDO
 
 - (void) registerUndoForPathChangesWithName:(NSString *)undoName {
@@ -1425,9 +1504,8 @@
 }
 
 - (void) registerUndoForMaskChangesWithName:(NSString *)undoName {
-	NSString *message = self.selectedPath.isCircle? @"Delete Circle" : @"Delete Rectangle";
 	NSMutableArray *pathsCopy = [[NSMutableArray alloc] initWithArray:self.pathEditorDelegate.selectedGroup.paths copyItems:YES];
-	NSDictionary *dictionary = [NSDictionary dictionaryWithObjectsAndKeys:message, @"message", pathsCopy, @"objects", self.pathEditorDelegate.selectedGroup, @"mask", nil];
+	NSDictionary *dictionary = [NSDictionary dictionaryWithObjectsAndKeys:undoName, @"message", pathsCopy, @"objects", self.pathEditorDelegate.selectedGroup, @"mask", nil];
 	[self.pathEditorDelegate registerMaskUndoActionWithManager:[self undoManager] userInfo:dictionary];
 }
 

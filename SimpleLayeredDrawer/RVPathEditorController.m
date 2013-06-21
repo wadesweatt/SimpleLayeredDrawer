@@ -51,6 +51,9 @@
     [self.canvas setNeedsDisplay:YES];
 }
 
+- (void) maskModeChanged:(NSInteger)currentMode {
+	// TODO: Move mode action to controller and implement this delegate method
+}
 
 #pragma mark - TABLE DELEGATE/DATASOURCE
 
@@ -64,7 +67,7 @@
         if (!group) return nil;
         return [group name];
     }
-    NSLog(@"No object value set for the mask table");
+    NSLog(@"No object value for the group table");
     return nil;
 }
 
@@ -74,6 +77,7 @@
     [group setName:(NSString *)object];
     [[NSNotificationCenter defaultCenter] postNotificationName:RVPVPAddRemoveMask object:nil];
 }
+
 
 #pragma mark - MASK TABLE ACTION
 
@@ -89,6 +93,7 @@
 	[self.pathsTableViewController.pathsTableView reloadData];
 	[self.canvas setNeedsDisplay:YES];
 }
+
 
 #pragma mark - ADD/DELETE
 

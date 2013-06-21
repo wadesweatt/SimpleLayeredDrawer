@@ -17,7 +17,7 @@
 
 @class RVPathGroup, CanvasView, RVPathTableViewController;
 
-@interface RVPathEditorController : NSObject <RVMaskEditorDataSource, NSTableViewDataSource, NSTableViewDelegate>
+@interface RVPathEditorController : NSObject <RVPathEditorDataSource, NSTableViewDataSource, NSTableViewDelegate>
 
 @property (nonatomic, strong) CanvasView *canvas;
 @property (nonatomic, strong) NSMutableArray *groups;
@@ -25,6 +25,8 @@
 @property (nonatomic, strong) NSTableView *groupsTableView, *pathsTableView;
 @property (nonatomic, strong) RVPathTableViewController *pathsTableViewController;
 @property (nonatomic, assign) CGFloat scale;
+
+- (void) maskModeChanged:(NSInteger)currentMode;
 
 - (void) createNewGroup;
 - (void) deleteSelectedGroup;
