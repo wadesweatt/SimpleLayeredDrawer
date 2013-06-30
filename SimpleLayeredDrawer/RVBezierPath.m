@@ -24,66 +24,89 @@
     newPath.isCircle = NO;
     newPath.isRectangle = NO;
 	newPath.feather = 0;
-	//newPath.draggingHandle = RVBezierPathBoundsHandleNone;
     return newPath;
 }
 
-- (BOOL) canContainArc {
-    return (!self.isRectangle && !self.isCircle);
+
+#pragma mark - SCALING
+
+- (RVBezierPathBoundsHandle) boundsHandleForPoint:(NSPoint)location {
+	if (self.isRectangle || self.isCircle || NSEqualPoints(location, NSZeroPoint)) return RVBezierPathBoundsHandleNone;
+	
+	CGFloat radius = 10.0;
+	CGRect bounds = self.bounds;
+	CGPoint bottomLeft = bounds.origin;
+	CGPoint bottomRight = CGPointMake(bounds.origin.x + bounds.size.width, bounds.origin.y);
+	CGPoint topLeft = CGPointMake(bottomLeft.x, bottomLeft.y + bounds.size.height);
+	CGPoint topRight = CGPointMake(bottomRight.x, topLeft.y);
+	
+	if ((ABS(location.x - bottomLeft.x)) < radius && (ABS(location.y - bottomLeft.y)) < radius) {
+		return RVBezierPathBoundsHandleBottomLeft;
+	} else if ((ABS(location.x - bottomRight.x)) < radius && (ABS(location.y - bottomRight.y)) < radius) {
+		return RVBezierPathBoundsHandleBottomRight;
+	} else if ((ABS(location.x - topLeft.x)) < radius && (ABS(location.y - topLeft.y)) < radius) {
+		return RVBezierPathBoundsHandleTopLeft;
+	} else if ((ABS(location.x - topRight.x)) < radius && (ABS(location.y - topRight.y)) < radius) {
+		return RVBezierPathBoundsHandleTopRight;
+	}
+	return RVBezierPathBoundsHandleNone;
 }
 
-//- (RVBezierPathBoundsHandle) boundsHandleForPoint:(RVPoint *)point {
-//	if (self.isRectangle || NSEqualPoints(point.point, NSZeroPoint)) return RVBezierPathBoundsHandleNone;
-//	
-//	NSPoint location = point.point;
-//	CGFloat radius = 10.0;
-//	CGRect bounds = self.bounds;
-//	CGPoint bottomLeft = bounds.origin;
-//	CGPoint bottomRight = CGPointMake(bounds.origin.x + bounds.size.width, bounds.origin.y);
-//	CGPoint topLeft = CGPointMake(bottomLeft.x, bottomLeft.y + bounds.size.height);
-//	CGPoint topRight = CGPointMake(bottomRight.x, topLeft.y);
-//	
-//	if ((ABS(location.x - bottomLeft.x)) < radius && (ABS(location.y - bottomLeft.y)) < radius) {
-//		return RVBezierPathBoundsHandleBottomLeft;
-//	} else if ((ABS(location.x - bottomRight.x)) < radius && (ABS(location.y - bottomRight.y)) < radius) {
-//		return RVBezierPathBoundsHandleBottomRight;
-//	} else if ((ABS(location.x - topLeft.x)) < radius && (ABS(location.y - topLeft.y)) < radius) {
-//		return RVBezierPathBoundsHandleTopLeft;
-//	} else if ((ABS(location.x - topRight.x)) < radius && (ABS(location.y - topRight.y)) < radius) {
-//		return RVBezierPathBoundsHandleTopRight;
-//	}
-//	return RVBezierPathBoundsHandleNone;
-//}
-
-//- (void) scaleAndTranslatePointsWithHandle:(RVBezierPathBoundsHandle)handle byTranslationPoint:(NSPoint)translation {
-//	CGFloat xChange = translation.x;
-//	CGFloat yChange = translation.y;
-//	CGFloat midX = self.bounds.origin.x + self.bounds.size.width/2;
-//	CGFloat midY = self.bounds.origin.y + self.bounds.size.width/2;
-//	
-//	switch (handle) {
-//		case RVBezierPathBoundsHandleBottomLeft: {
-//			for (RVPoint *eachPoint in self.points) {
-//				
-//			}
-//			break;
-//		}
-//		case RVBezierPathBoundsHandleBottomRight: {
-//			
-//			break;
-//		}
-//		case RVBezierPathBoundsHandleTopLeft: {
-//			
-//			break;
-//		}
-//		case RVBezierPathBoundsHandleTopRight: {
-//			
-//			break;
-//		}
-//		case RVBezierPathBoundsHandleNone:
-//			break;
-//	}
-//}
+- (void) scaleAndTranslatePointsWithHandle:(RVBezierPathBoundsHandle)handle byTranslationVector:(NSPoint)translation {
+	CGFloat xChange = translation.x;
+	CGFloat yChange = translation.y;
+	CGFloat midX = NSMidX([self bounds]);
+	CGFloat midY = NSMidY([self bounds]);
+	
+	switch (handle) {
+		case RVBezierPathBoundsHandleBottomLeft: {
+			for (RVPoint *eachPoint in self.points) {
+				NSPoint point = [eachPoint point];
+				if (point.x < midX && point.y < midY) {
+					point.x += xChange;
+					point.y += yChange;
+					[eachPoint setPoint:point];
+				}
+			}
+			break;
+		}
+		case RVBezierPathBoundsHandleBottomRight: {
+			for (RVPoint *eachPoint in self.points) {
+				NSPoint point = [eachPoint point];
+				if (point.x > midX && point.y < midY) {
+					point.x += xChange;
+					point.y += yChange;
+					[eachPoint setPoint:point];
+				}
+			}
+			break;
+		}
+		case RVBezierPathBoundsHandleTopLeft: {
+			for (RVPoint *eachPoint in self.points) {
+				NSPoint point = [eachPoint point];
+				if (point.x < midX && point.y > midY) {
+					point.x += xChange;
+					point.y += yChange;
+					[eachPoint setPoint:point];
+				}
+			}
+			break;
+		}
+		case RVBezierPathBoundsHandleTopRight: {
+			for (RVPoint *eachPoint in self.points) {
+				NSPoint point = [eachPoint point];
+				if (point.x > midX && point.y > midY) {
+					point.x += xChange;
+					point.y += yChange;
+					[eachPoint setPoint:point];
+				}
+			}
+			break;
+		}
+		case RVBezierPathBoundsHandleNone:
+			break;
+	}
+}
 
 
 #pragma mark - BOILER PLATE
@@ -197,6 +220,10 @@
 
 
 #pragma mark - CIRCLE
+
+- (BOOL) canContainArc {
+    return (!self.isRectangle && !self.isCircle);
+}
 
 - (CGFloat) radius {
     if (self.isCircle && [self.points count] == 2) {

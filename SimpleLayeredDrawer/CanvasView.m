@@ -129,8 +129,10 @@
 }
 
 - (void) outlineSelectionForPath:(RVBezierPath *)path {
-    NSBezierPath *boundsOutline = [NSBezierPath bezierPathWithRect:[path bounds]];
-    if ([path draggingBounds]) {
+	NSRect bounds = [path bounds];
+    NSBezierPath *boundsOutline = [NSBezierPath bezierPathWithRect:bounds];
+	
+    if (draggingPath) {
         [[NSColor greenColor] setStroke];
         [boundsOutline setLineWidth:2.0];
     } else {
@@ -138,6 +140,51 @@
         [boundsOutline setLineWidth:1.0];
     }
     [boundsOutline stroke];
+	
+	if (path.isRectangle || path.isCircle) return;
+	
+#define HANDLE_LENGTH 5.0
+	// construct the resizing handles
+	[boundsOutline removeAllPoints];
+	
+	NSPoint origin = bounds.origin;
+	CGFloat maxX = NSMaxX(bounds);
+	CGFloat maxY = NSMaxY(bounds);
+	
+	// bottom left
+	[boundsOutline moveToPoint:origin];
+	[boundsOutline lineToPoint:NSMakePoint(origin.x + HANDLE_LENGTH, origin.y)];
+	[boundsOutline moveToPoint:origin];
+	[boundsOutline lineToPoint:NSMakePoint(origin.x, origin.y + HANDLE_LENGTH)];
+	
+	// bottom right
+	NSPoint bottomRight = NSMakePoint(maxX, origin.y);
+	[boundsOutline moveToPoint:bottomRight];
+	[boundsOutline lineToPoint:NSMakePoint(bottomRight.x - HANDLE_LENGTH, bottomRight.y)];
+	[boundsOutline moveToPoint:bottomRight];
+	[boundsOutline lineToPoint:NSMakePoint(bottomRight.x, bottomRight.y + HANDLE_LENGTH)];
+	
+	// top left
+	NSPoint topLeft = NSMakePoint(origin.x, maxY);
+	[boundsOutline moveToPoint:topLeft];
+	[boundsOutline lineToPoint:NSMakePoint(topLeft.x + HANDLE_LENGTH, topLeft.y)];
+	[boundsOutline moveToPoint:topLeft];
+	[boundsOutline lineToPoint:NSMakePoint(topLeft.x, topLeft.y - HANDLE_LENGTH)];
+	
+	// top right
+	NSPoint topRight = NSMakePoint(maxX, maxY);
+	[boundsOutline moveToPoint:topRight];
+	[boundsOutline lineToPoint:NSMakePoint(topRight.x - HANDLE_LENGTH, topRight.y)];
+	[boundsOutline moveToPoint:topRight];
+	[boundsOutline lineToPoint:NSMakePoint(topRight.x, topRight.y - HANDLE_LENGTH)];
+	
+	if (draggingPathBoundsHandle) {
+		[[NSColor greenColor] setStroke];
+	} else {
+		[[NSColor grayColor] setStroke];
+	}
+	[boundsOutline setLineWidth:3.0];
+	[boundsOutline stroke];
 }
 
 - (void) drawCircleAtPoint:(NSPoint)point color:(NSColor *)fillColor select:(BOOL)shouldSelect {
@@ -625,8 +672,8 @@
 		return;
 	}
 	
-    // adjust for workspace origin offset
-    mouseStartPoint = NSMakePoint(mouseDownPoint.x, mouseDownPoint.y);
+    // here we could adjust for any origin offset, for instance: if we wanted to inset the origin of the grid.
+    mouseStartPoint = NSMakePoint(mouseDownPoint.x/* + some offset*/, mouseDownPoint.y/* + some offset*/);
     pointsArchive = nil;
     if (self.selectedPath) pointsArchive = [[NSMutableArray alloc] initWithArray:[self.selectedPath points] copyItems:YES]; // for undo
     dragged = NO; // reset
@@ -759,7 +806,7 @@
     else {
 		// Arc creation in selection mode
         // ctrl
-        // create an arc from the last two points
+        // create an arc around the selected point
         if (NSControlKeyMask & [NSEvent modifierFlags] && selectedIndex > -1 && selectedIndex < self.selectedPath.points.count && self.selectedPath.canContainArc) {
 			[self registerUndoForPathChangesWithName:@"Create Arc"];
 			[self showActionNotificationWithText:@"Create Arc"];
@@ -827,20 +874,26 @@
             }
         }
         if (!pointWasSelected) {
-            for (NSInteger i = 0; i<[self.pathEditorDelegate.selectedGroup.paths count]; i++) {
-                RVBezierPath *eachPath = [self.pathEditorDelegate.selectedGroup.paths objectAtIndex:i];
-				if (eachPath.points.count < 1) continue;
-                NSRect pathBounds = [eachPath bounds];
-                if (NSPointInRect(mouseLocation, pathBounds)) {
-                    [self setSelectedPath:eachPath];
-					selectedIndex = -1;
-                    pathWasSelected = YES; // flag for dragging
-					[[NSNotificationCenter defaultCenter] postNotificationName:RVSelectRowInMaskTable object:[NSNumber numberWithInteger:i]];
-                    break;
-                }
-                self.selectedPath = nil;
-            }
-			if (!pathWasSelected) [[NSNotificationCenter defaultCenter] postNotificationName:RVSelectRowInMaskTable object:[NSNumber numberWithInteger:-1]];
+			// check if a bounds handle was grabbed on the currently selected path
+			if ([self.selectedPath boundsHandleForPoint:mouseStartPoint] != RVBezierPathBoundsHandleNone) {
+				draggingPathBoundsHandle = YES;
+			} else {
+				// see if another path was selected
+				for (NSInteger i = 0; i<[self.pathEditorDelegate.selectedGroup.paths count]; i++) {
+					RVBezierPath *eachPath = [self.pathEditorDelegate.selectedGroup.paths objectAtIndex:i];
+					if (eachPath.points.count < 1) continue;
+					NSRect pathBounds = [eachPath bounds];
+					if (NSPointInRect(mouseStartPoint, pathBounds)) {
+						[self setSelectedPath:eachPath];
+						selectedIndex = -1;
+						pathWasSelected = YES; // flag for dragging
+						[[NSNotificationCenter defaultCenter] postNotificationName:RVSelectRowInMaskTable object:[NSNumber numberWithInteger:i]];
+						break;
+					}
+					self.selectedPath = nil;
+				}
+				if (!pathWasSelected) [[NSNotificationCenter defaultCenter] postNotificationName:RVSelectRowInMaskTable object:[NSNumber numberWithInteger:-1]];
+			}
         }
     }
     [[NSNotificationCenter defaultCenter] postNotificationName:RVReloadMaskTable object:nil];
@@ -1037,8 +1090,14 @@
                     eachPoint.y += distanceVectorEndpoint.y;
                     eachPointObject.point = eachPoint;
                 }
-                [self.selectedPath setDraggingBounds:YES];
-            }
+                draggingPath = YES;
+				break;
+            } else if (draggingPathBoundsHandle) {
+				NSPoint distanceVectorEndpoint = NSMakePoint(dragPoint.x - lastDragPoint.x, dragPoint.y - lastDragPoint.y);
+				RVBezierPathBoundsHandle handle = [self.selectedPath boundsHandleForPoint:lastDragPoint];
+				[self.selectedPath scaleAndTranslatePointsWithHandle:handle byTranslationVector:distanceVectorEndpoint];
+				break;
+			}
             break;
         }
 			
@@ -1128,6 +1187,8 @@
 
 - (void) mouseUp:(NSEvent *)theEvent {
 	if (dragged) {
+		
+		// undo/action message stuff
 		NSString *message = nil;
 		if (!pathWasSelected && !createdRectOrCircle) { // drag to resize or alter shape
 			RVPoint *draggedPoint = [self.selectedPath.points objectAtIndex:selectedIndex];
@@ -1141,9 +1202,12 @@
 			message = @"Drag Shape";
 		}
 		[self registerUndoForPathChangesWithName:message];
+		
+		// reset
         dragged = NO;
         pathWasSelected = NO;
-        [self.selectedPath setDraggingBounds:NO];
+        draggingPath = NO;
+		draggingPathBoundsHandle = NO;
         lastDragPoint = NSZeroPoint;
         [[NSNotificationCenter defaultCenter] postNotificationName:RVReloadMaskTable object:nil];
         [self setNeedsDisplay:YES];
@@ -1159,7 +1223,15 @@
 
 - (void) mouseMoved:(NSEvent *)theEvent {
 	mouseLocation = [self convertPoint:[theEvent locationInWindow] fromView:nil];
+	[self updateCoordinatesTextFieldWithMouseLocation:mouseLocation];
+	if (drawingMode != RVDrawingModeSelectTool) {
+		[[NSCursor crosshairCursor] set];
+	} else {
+		[[NSCursor arrowCursor] set];
+	}
+	
     if ([self.selectedPath.points count] > 0) {
+		closePathOnClick = NO;
         for (int i = 0; i<[self.selectedPath.points count]; i++) {
             RVPoint *pointObject = [self.selectedPath.points objectAtIndex:i];
             NSPoint thisPoint = [self scaledPointForPoint:pointObject.point];
@@ -1168,20 +1240,15 @@
                 if (drawingMode == RVDrawingModePenTool) {
                     closePathOnClick = YES;
                 }
-                break;
-            } else {
-				[[NSCursor arrowCursor] set];
-			}
-            closePathOnClick = NO;
-            if (drawingMode != RVDrawingModeSelectTool) {
-                [[NSCursor crosshairCursor] set];
-            } else {
-				[[NSCursor arrowCursor] set];
-			}
+                return;
+            }
         }
-        [self setNeedsDisplay:YES];
+		
+		if ([self.selectedPath boundsHandleForPoint:mouseLocation] != RVBezierPathBoundsHandleNone) {
+			[[NSCursor pointingHandCursor] set];
+		}
+		if (drawingMode == RVDrawingModePenTool) [self setNeedsDisplay:YES];
     }
-	[self updateCoordinatesTextFieldWithMouseLocation:mouseLocation];
 }
 
 - (void) mouseEntered:(NSEvent *)theEvent {

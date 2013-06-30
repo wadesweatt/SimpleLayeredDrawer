@@ -29,7 +29,7 @@ typedef enum _RVDrawingMode {
     NSPoint mouseLocation;
     NSInteger selectedIndex;
     // dragging
-    BOOL dragged, draggedPathBounds, createdRectOrCircle, pointWasSelected, pathWasSelected, closePathOnClick, mouseInView;
+    BOOL dragged, draggingPath, draggingPathBoundsHandle, createdRectOrCircle, pointWasSelected, pathWasSelected, closePathOnClick, mouseInView;
     NSPoint lastDragPoint, rectangleCenter; // for dragging shapes
     
 	NSMutableArray *pointsArchive; // for undo
