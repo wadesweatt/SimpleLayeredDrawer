@@ -54,7 +54,7 @@
 - (void) awakeFromNib {
 	[self.coordinatesTextField setStringValue:@""];
 	self.strokeColor = [NSColor orangeColor];
-	self.fillColor = [NSColor blackColor];
+	self.fillColor = [NSColor orangeColor];
 	self.selectedColor = [NSColor orangeColor];
 }
 
@@ -119,6 +119,9 @@
     }
 }
 
+- (BOOL) acceptsFirstResponder {
+	return YES;
+}
 
 #pragma mark - DRAW
 
@@ -237,34 +240,228 @@
             }
 			
             [path lineToPoint:firstPoint]; // close it out
-			
-			if (self.shouldFill) {
-				if ([path feather] > 0) {
-					CGFloat gradientLocation = 1.0 - [path feather];
-					NSGradient *featherGradient = [[NSGradient alloc] initWithColorsAndLocations:self.fillColor, gradientLocation,
-												   [NSColor clearColor], 1.0, nil];
-					[featherGradient drawInBezierPath:path relativeCenterPosition:NSMakePoint(0, 0)];
-				} else {
-					[self.fillColor setFill];
-					[path fill];
-				}
-			}
-			
-			if (self.shouldStroke) {
-				[self.strokeColor setStroke];
-				[path setLineWidth:self.lineWidth];
-				[path stroke];
-			}
-            
-			if (path == self.selectedPath) {
-				[self outlineSelectionForPath:path];
-                [self drawCircleAtPoint:center color:[NSColor lightGrayColor] select:NO];
-                [self drawCircleAtPoint:control color:self.strokeColor select:YES];
-            }
         }
         return;
     }
     NSLog(@"%s Received invalid circle", __PRETTY_FUNCTION__);
+}
+
+- (void) constructPath:(RVBezierPath *)path {
+	if (path.isCircle) {
+		[self circlePathForPath:path];
+		return;
+	}
+	
+	// first point (path origin)
+	RVPoint *firstPointObject = [path.points objectAtIndex:0];
+	NSPoint firstPoint = [self scaledPointForPoint:firstPointObject.point];
+	BOOL firstPointSelected = (selectedIndex == 0 && path == self.selectedPath);
+	
+	// draw line to first control point if selected
+	if (firstPointSelected) {
+		NSBezierPath *firstControlPointPath = [NSBezierPath bezierPath];
+		[firstControlPointPath setLineWidth:RVCONTROL_POINT_LINE_WIDTH];
+		
+		// this point's front control point
+		if ([firstPointObject hasFrontControlPoint]) {
+			NSPoint firstPointFrontControlPoint = [self scaledPointForPoint:firstPointObject.frontControlPoint];
+			[self drawCircleAtPoint:firstPointFrontControlPoint color:[NSColor lightGrayColor] select:NO];
+			[firstControlPointPath moveToPoint:firstPointFrontControlPoint];
+			[firstControlPointPath lineToPoint:firstPoint];
+		}
+		
+		// the next point's behind control point
+		if ([path.points count] > 1) {
+			RVPoint *nextPointObject = [path.points objectAtIndex:1];
+			NSPoint nextPoint = [self scaledPointForPoint:[nextPointObject point]];
+			NSPoint behindCP = [self scaledPointForPoint:[nextPointObject behindControlPoint]];
+			if ([nextPointObject hasBehindControlPoint]) {
+				[self drawCircleAtPoint:behindCP color:[NSColor lightGrayColor] select:NO];
+				[firstControlPointPath moveToPoint:behindCP];
+				[firstControlPointPath lineToPoint:nextPoint];
+			}
+		}
+		
+		[[NSColor lightGrayColor] setStroke];
+		[firstControlPointPath stroke];
+	}
+	
+	RVPoint *lastPointObject = [path.points lastObject];
+	if ((firstPointObject.hasBehindControlPoint || lastPointObject.hasFrontControlPoint) && [path isClosed]) {
+		NSPoint lastPoint = [self scaledPointForPoint:[lastPointObject point]];
+		
+		// only first point has a control point
+		if (firstPointObject.hasBehindControlPoint && !lastPointObject.hasFrontControlPoint) {
+			NSPoint behindControlPoint = [self scaledPointForPoint:firstPointObject.behindControlPoint];
+			//NSLog(@"Only first point had a control point");
+			if (firstPointSelected) {
+				[self drawCircleAtPoint:behindControlPoint color:[NSColor lightGrayColor] select:NO];
+				NSBezierPath *controlPointPath = [NSBezierPath bezierPath];
+				[controlPointPath setLineWidth:RVCONTROL_POINT_LINE_WIDTH];
+				[controlPointPath moveToPoint:behindControlPoint];
+				[controlPointPath lineToPoint:firstPoint];
+				[[NSColor lightGrayColor] setStroke];
+				[controlPointPath stroke];
+			}
+			
+			[path moveToPoint:lastPoint];
+			[path curveToPoint:firstPoint controlPoint1:behindControlPoint controlPoint2:behindControlPoint];
+			
+			// only previous point has a control point
+		} else if (!firstPointObject.hasBehindControlPoint && lastPointObject.hasFrontControlPoint) {
+			NSPoint frontControlPoint = [self scaledPointForPoint:lastPointObject.frontControlPoint];
+			//NSLog(@"Only lastObject point had a control point");
+			if (firstPointSelected) {
+				[self drawCircleAtPoint:frontControlPoint color:[NSColor lightGrayColor] select:NO];
+				NSBezierPath *controlPointPath = [NSBezierPath bezierPath];
+				[controlPointPath setLineWidth:RVCONTROL_POINT_LINE_WIDTH];
+				[controlPointPath moveToPoint:frontControlPoint];
+				[controlPointPath lineToPoint:lastPoint];
+				[[NSColor lightGrayColor] setStroke];
+				[controlPointPath stroke];
+			}
+			
+			[path moveToPoint:lastPoint];
+			[path curveToPoint:firstPoint controlPoint1:frontControlPoint controlPoint2:frontControlPoint];
+			
+			// both points have control points between them
+		} else if (firstPointObject.hasBehindControlPoint && lastPointObject.hasFrontControlPoint) {
+			NSPoint frontControlPoint = [self scaledPointForPoint:lastPointObject.frontControlPoint];
+			
+			NSPoint behindControlPoint = [self scaledPointForPoint:firstPointObject.behindControlPoint];
+			//NSLog(@"Both first first and lastObject's point had control points between them");
+			if (firstPointSelected) {
+				NSBezierPath *controlPointPath = [NSBezierPath bezierPath];
+				[controlPointPath setLineWidth:RVCONTROL_POINT_LINE_WIDTH];
+				[self drawCircleAtPoint:frontControlPoint color:[NSColor lightGrayColor] select:NO];
+				[controlPointPath moveToPoint:frontControlPoint];
+				[controlPointPath lineToPoint:lastPoint];
+				
+				[self drawCircleAtPoint:behindControlPoint color:[NSColor lightGrayColor] select:NO];
+				[controlPointPath moveToPoint:behindControlPoint];
+				[controlPointPath lineToPoint:firstPoint];
+				[[NSColor lightGrayColor] setStroke];
+				[controlPointPath stroke];
+			}
+			
+			[path moveToPoint:lastPoint];
+			[path curveToPoint:firstPoint controlPoint1:frontControlPoint controlPoint2:behindControlPoint];
+		}
+		// neither point has a control point between them or the path is not closed - just move here
+	} else {
+		[path moveToPoint:firstPoint];
+	}
+	
+	// Rest of the points in this path
+	// notice starting index of 1
+	for (int i = 1; i<[path.points count]; i++) {
+		RVPoint *destinationPointObject = [path.points objectAtIndex:i];
+		NSPoint destinationPoint = [self scaledPointForPoint:destinationPointObject.point];
+		
+		BOOL selected = (selectedIndex == i && path == self.selectedPath);
+		
+		if (selected) {
+			NSBezierPath *controlPointPath = [NSBezierPath bezierPath];
+			[controlPointPath setLineWidth:RVCONTROL_POINT_LINE_WIDTH];
+			
+			// this point's forward control point
+			if ([destinationPointObject hasFrontControlPoint]) {
+				NSPoint destinationPointFrontCP = [self scaledPointForPoint:destinationPointObject.frontControlPoint];
+				[self drawCircleAtPoint:destinationPointFrontCP color:[NSColor lightGrayColor] select:NO];
+				[controlPointPath moveToPoint:destinationPointFrontCP];
+				[controlPointPath lineToPoint:destinationPoint];
+			}
+			
+			// the next point's behind control point
+			if ([path.points count] > (i + 1)) {
+				RVPoint *nextPointObject = [path.points objectAtIndex:(i + 1)];
+				NSPoint nextPoint = [self scaledPointForPoint:[nextPointObject point]];
+				NSPoint behindCP = [self scaledPointForPoint:[nextPointObject behindControlPoint]];
+				if ([nextPointObject hasBehindControlPoint]) {
+					[self drawCircleAtPoint:behindCP color:[NSColor lightGrayColor] select:NO];
+					[controlPointPath moveToPoint:behindCP];
+					[controlPointPath lineToPoint:nextPoint];
+				}
+			} else if ((i + 1) == [path.points count]) { // if this is the last point
+				RVPoint *nextPointObject = [path.points objectAtIndex:0]; // next point is actually the first point
+				NSPoint nextPoint = [self scaledPointForPoint:[nextPointObject point]];
+				NSPoint behindCP = [self scaledPointForPoint:[nextPointObject behindControlPoint]];
+				if ([nextPointObject hasBehindControlPoint]) {
+					[self drawCircleAtPoint:behindCP color:[NSColor lightGrayColor] select:NO];
+					[controlPointPath moveToPoint:behindCP];
+					[controlPointPath lineToPoint:nextPoint];
+				}
+			}
+			
+			[[NSColor lightGrayColor] setStroke];
+			[controlPointPath stroke];
+		}
+		
+		RVPoint *behindPointObject = [path.points objectAtIndex:(i-1)];
+		NSPoint behindPoint = [self scaledPointForPoint:behindPointObject.point];
+		NSBezierPath *pathToControlPoints = [NSBezierPath bezierPath];
+		[pathToControlPoints setLineWidth:RVCONTROL_POINT_LINE_WIDTH];
+		
+		NSPoint destinationPointBehindControlPoint = NSZeroPoint;
+		NSPoint behindPointFrontControlPoint = NSZeroPoint;
+		
+		// if only the destination point has a behind control point
+		if ([destinationPointObject hasBehindControlPoint] && ![behindPointObject hasFrontControlPoint]) {
+			//NSLog(@"Only destination point had a control point");
+			destinationPointBehindControlPoint = [self scaledPointForPoint:[destinationPointObject behindControlPoint]];
+			if (selected) {
+				[self drawCircleAtPoint:destinationPointBehindControlPoint color:[NSColor lightGrayColor] select:NO];
+				[pathToControlPoints moveToPoint:destinationPointBehindControlPoint];
+				[pathToControlPoints lineToPoint:destinationPoint];
+				[[NSColor lightGrayColor] setStroke];
+				[pathToControlPoints stroke];
+			}
+			
+			[path curveToPoint:destinationPoint controlPoint1:destinationPointBehindControlPoint controlPoint2:destinationPointBehindControlPoint];
+			
+			// if only the last point has a front control point
+		} else if (![destinationPointObject hasBehindControlPoint] && [behindPointObject hasFrontControlPoint]) {
+			//NSLog(@"Only previous point had a control point");
+			behindPointFrontControlPoint = [self scaledPointForPoint:[behindPointObject frontControlPoint]];
+			
+			if (selected) {
+				[self drawCircleAtPoint:behindPointFrontControlPoint color:[NSColor lightGrayColor] select:NO];
+				[pathToControlPoints moveToPoint:behindPointFrontControlPoint];
+				[pathToControlPoints lineToPoint:behindPoint];
+				[[NSColor lightGrayColor] setStroke];
+				[pathToControlPoints stroke];
+			}
+			
+			[path curveToPoint:destinationPoint controlPoint1:behindPointFrontControlPoint controlPoint2:behindPointFrontControlPoint];
+			
+			// if both the current point and the destination point have a control points between themselves
+		} else if ([destinationPointObject hasBehindControlPoint] && [behindPointObject hasFrontControlPoint]) {
+			//NSLog(@"Both points had a control point between them");
+			destinationPointBehindControlPoint = [self scaledPointForPoint:[destinationPointObject behindControlPoint]];
+			behindPointFrontControlPoint = [self scaledPointForPoint:[behindPointObject frontControlPoint]];
+			
+			if (selected) {
+				[self drawCircleAtPoint:destinationPointBehindControlPoint color:[NSColor lightGrayColor] select:NO];
+				[pathToControlPoints moveToPoint:destinationPointBehindControlPoint];
+				[pathToControlPoints lineToPoint:destinationPoint];
+				
+				[self drawCircleAtPoint:behindPointFrontControlPoint color:[NSColor lightGrayColor] select:NO];
+				[pathToControlPoints moveToPoint:behindPointFrontControlPoint];
+				[pathToControlPoints lineToPoint:behindPoint];
+				[[NSColor lightGrayColor] setStroke];
+				[pathToControlPoints stroke];
+			}
+			
+			[path curveToPoint:destinationPoint controlPoint1:behindPointFrontControlPoint controlPoint2:destinationPointBehindControlPoint];
+			
+			// no control points, draw a straight line
+		} else {
+			//NSLog(@"Neither last nor destination point had a control point");
+			[path lineToPoint:destinationPoint];
+		}
+	}
+	
+	if ([path isClosed]) [path closePath];
 }
 
 - (void)drawRect:(NSRect)dirtyRect {
@@ -275,231 +472,47 @@
         [path removeAllPoints]; // removes internal NSBezierPath points, NOT RVBezierPath's array of points
         if ([path.points count] > 0) {
 			// Draw each path
+			[self constructPath:path];
+			[path setLineWidth:self.lineWidth];
 			
-            if (path.isCircle) {
-                [self circlePathForPath:path];
-                continue;
-            }
-			
-			// first point (path origin)
-            RVPoint *firstPointObject = [path.points objectAtIndex:0];
-            NSPoint firstPoint = [self scaledPointForPoint:firstPointObject.point];
-            BOOL firstPointSelected = (selectedIndex == 0 && path == self.selectedPath);
-            
-            // draw line to first control point if selected
-            if (firstPointSelected) {
-                NSBezierPath *firstControlPointPath = [NSBezierPath bezierPath];
-                [firstControlPointPath setLineWidth:RVCONTROL_POINT_LINE_WIDTH];
-				
-                // this point's front control point
-                if ([firstPointObject hasFrontControlPoint]) {
-                    NSPoint firstPointFrontControlPoint = [self scaledPointForPoint:firstPointObject.frontControlPoint];
-                    [self drawCircleAtPoint:firstPointFrontControlPoint color:[NSColor lightGrayColor] select:NO];
-                    [firstControlPointPath moveToPoint:firstPointFrontControlPoint];
-                    [firstControlPointPath lineToPoint:firstPoint];
-                }
-				
-                // the next point's behind control point
-                if ([path.points count] > 1) {
-                    RVPoint *nextPointObject = [path.points objectAtIndex:1];
-                    NSPoint nextPoint = [self scaledPointForPoint:[nextPointObject point]];
-                    NSPoint behindCP = [self scaledPointForPoint:[nextPointObject behindControlPoint]];
-                    if ([nextPointObject hasBehindControlPoint]) {
-                        [self drawCircleAtPoint:behindCP color:[NSColor lightGrayColor] select:NO];
-                        [firstControlPointPath moveToPoint:behindCP];
-                        [firstControlPointPath lineToPoint:nextPoint];
-                    }
-                }
-				
-                [[NSColor lightGrayColor] setStroke];
-                [firstControlPointPath stroke];
-            }
-			
-            RVPoint *lastPointObject = [path.points lastObject];
-            if ((firstPointObject.hasBehindControlPoint || lastPointObject.hasFrontControlPoint) && [path isClosed]) {
-                NSPoint lastPoint = [self scaledPointForPoint:[lastPointObject point]];
-				
-                // only first point has a control point
-                if (firstPointObject.hasBehindControlPoint && !lastPointObject.hasFrontControlPoint) {
-                    NSPoint behindControlPoint = [self scaledPointForPoint:firstPointObject.behindControlPoint];
-                    //NSLog(@"Only first point had a control point");
-                    if (firstPointSelected) {
-                        [self drawCircleAtPoint:behindControlPoint color:[NSColor lightGrayColor] select:NO];
-                        NSBezierPath *controlPointPath = [NSBezierPath bezierPath];
-                        [controlPointPath setLineWidth:RVCONTROL_POINT_LINE_WIDTH];
-                        [controlPointPath moveToPoint:behindControlPoint];
-                        [controlPointPath lineToPoint:firstPoint];
-                        [[NSColor lightGrayColor] setStroke];
-                        [controlPointPath stroke];
-                    }
-					
-                    [path moveToPoint:lastPoint];
-                    [path curveToPoint:firstPoint controlPoint1:behindControlPoint controlPoint2:behindControlPoint];
-					
-					// only previous point has a control point
-                } else if (!firstPointObject.hasBehindControlPoint && lastPointObject.hasFrontControlPoint) {
-                    NSPoint frontControlPoint = [self scaledPointForPoint:lastPointObject.frontControlPoint];
-                    //NSLog(@"Only lastObject point had a control point");
-                    if (firstPointSelected) {
-                        [self drawCircleAtPoint:frontControlPoint color:[NSColor lightGrayColor] select:NO];
-                        NSBezierPath *controlPointPath = [NSBezierPath bezierPath];
-                        [controlPointPath setLineWidth:RVCONTROL_POINT_LINE_WIDTH];
-                        [controlPointPath moveToPoint:frontControlPoint];
-                        [controlPointPath lineToPoint:lastPoint];
-                        [[NSColor lightGrayColor] setStroke];
-                        [controlPointPath stroke];
-                    }
-					
-                    [path moveToPoint:lastPoint];
-                    [path curveToPoint:firstPoint controlPoint1:frontControlPoint controlPoint2:frontControlPoint];
-					
-					// both points have control points between them
-                } else if (firstPointObject.hasBehindControlPoint && lastPointObject.hasFrontControlPoint) {
-                    NSPoint frontControlPoint = [self scaledPointForPoint:lastPointObject.frontControlPoint];
-					
-                    NSPoint behindControlPoint = [self scaledPointForPoint:firstPointObject.behindControlPoint];
-                    //NSLog(@"Both first first and lastObject's point had control points between them");
-                    if (firstPointSelected) {
-                        NSBezierPath *controlPointPath = [NSBezierPath bezierPath];
-                        [controlPointPath setLineWidth:RVCONTROL_POINT_LINE_WIDTH];
-                        [self drawCircleAtPoint:frontControlPoint color:[NSColor lightGrayColor] select:NO];
-                        [controlPointPath moveToPoint:frontControlPoint];
-                        [controlPointPath lineToPoint:lastPoint];
-						
-                        [self drawCircleAtPoint:behindControlPoint color:[NSColor lightGrayColor] select:NO];
-                        [controlPointPath moveToPoint:behindControlPoint];
-                        [controlPointPath lineToPoint:firstPoint];
-                        [[NSColor lightGrayColor] setStroke];
-                        [controlPointPath stroke];
-                    }
-					
-                    [path moveToPoint:lastPoint];
-                    [path curveToPoint:firstPoint controlPoint1:frontControlPoint controlPoint2:behindControlPoint];
-                }
-				// neither point has a control point between them or the path is not closed - just move here
-            } else {
-                [path moveToPoint:firstPoint];
-            }
-			
-			// Rest of the points in this path
-            // notice starting index of 1
-            for (int i = 1; i<[path.points count]; i++) {
-                RVPoint *destinationPointObject = [path.points objectAtIndex:i];
-                NSPoint destinationPoint = [self scaledPointForPoint:destinationPointObject.point];
-				
-                BOOL selected = (selectedIndex == i && path == self.selectedPath);
-				
-                if (selected) {
-                    NSBezierPath *controlPointPath = [NSBezierPath bezierPath];
-                    [controlPointPath setLineWidth:RVCONTROL_POINT_LINE_WIDTH];
-					
-                    // this point's forward control point
-                    if ([destinationPointObject hasFrontControlPoint]) {
-                        NSPoint destinationPointFrontCP = [self scaledPointForPoint:destinationPointObject.frontControlPoint];
-                        [self drawCircleAtPoint:destinationPointFrontCP color:[NSColor lightGrayColor] select:NO];
-                        [controlPointPath moveToPoint:destinationPointFrontCP];
-                        [controlPointPath lineToPoint:destinationPoint];
-                    }
-					
-                    // the next point's behind control point
-                    if ([path.points count] > (i + 1)) {
-                        RVPoint *nextPointObject = [path.points objectAtIndex:(i + 1)];
-                        NSPoint nextPoint = [self scaledPointForPoint:[nextPointObject point]];
-                        NSPoint behindCP = [self scaledPointForPoint:[nextPointObject behindControlPoint]];
-                        if ([nextPointObject hasBehindControlPoint]) {
-                            [self drawCircleAtPoint:behindCP color:[NSColor lightGrayColor] select:NO];
-                            [controlPointPath moveToPoint:behindCP];
-                            [controlPointPath lineToPoint:nextPoint];
-                        }
-                    } else if ((i + 1) == [path.points count]) { // if this is the last point
-                        RVPoint *nextPointObject = [path.points objectAtIndex:0]; // next point is actually the first point
-                        NSPoint nextPoint = [self scaledPointForPoint:[nextPointObject point]];
-                        NSPoint behindCP = [self scaledPointForPoint:[nextPointObject behindControlPoint]];
-                        if ([nextPointObject hasBehindControlPoint]) {
-                            [self drawCircleAtPoint:behindCP color:[NSColor lightGrayColor] select:NO];
-                            [controlPointPath moveToPoint:behindCP];
-                            [controlPointPath lineToPoint:nextPoint];
-                        }
-                    }
-					
-                    [[NSColor lightGrayColor] setStroke];
-                    [controlPointPath stroke];
-                }
-				
-                RVPoint *behindPointObject = [path.points objectAtIndex:(i-1)];
-                NSPoint behindPoint = [self scaledPointForPoint:behindPointObject.point];
-                NSBezierPath *pathToControlPoints = [NSBezierPath bezierPath];
-                [pathToControlPoints setLineWidth:RVCONTROL_POINT_LINE_WIDTH];
-				
-                NSPoint destinationPointBehindControlPoint = NSZeroPoint;
-                NSPoint behindPointFrontControlPoint = NSZeroPoint;
-				
-                // if only the destination point has a behind control point
-                if ([destinationPointObject hasBehindControlPoint] && ![behindPointObject hasFrontControlPoint]) {
-                    //NSLog(@"Only destination point had a control point");
-                    destinationPointBehindControlPoint = [self scaledPointForPoint:[destinationPointObject behindControlPoint]];
-                    if (selected) {
-                        [self drawCircleAtPoint:destinationPointBehindControlPoint color:[NSColor lightGrayColor] select:NO];
-                        [pathToControlPoints moveToPoint:destinationPointBehindControlPoint];
-                        [pathToControlPoints lineToPoint:destinationPoint];
-                        [[NSColor lightGrayColor] setStroke];
-                        [pathToControlPoints stroke];
-                    }
-					
-                    [path curveToPoint:destinationPoint controlPoint1:destinationPointBehindControlPoint controlPoint2:destinationPointBehindControlPoint];
-					
-					// if only the last point has a front control point
-                } else if (![destinationPointObject hasBehindControlPoint] && [behindPointObject hasFrontControlPoint]) {
-                    //NSLog(@"Only previous point had a control point");
-                    behindPointFrontControlPoint = [self scaledPointForPoint:[behindPointObject frontControlPoint]];
-					
-                    if (selected) {
-                        [self drawCircleAtPoint:behindPointFrontControlPoint color:[NSColor lightGrayColor] select:NO];
-                        [pathToControlPoints moveToPoint:behindPointFrontControlPoint];
-                        [pathToControlPoints lineToPoint:behindPoint];
-                        [[NSColor lightGrayColor] setStroke];
-                        [pathToControlPoints stroke];
-                    }
-					
-                    [path curveToPoint:destinationPoint controlPoint1:behindPointFrontControlPoint controlPoint2:behindPointFrontControlPoint];
-					
-					// if both the current point and the destination point have a control points between themselves
-                } else if ([destinationPointObject hasBehindControlPoint] && [behindPointObject hasFrontControlPoint]) {
-                    //NSLog(@"Both points had a control point between them");
-                    destinationPointBehindControlPoint = [self scaledPointForPoint:[destinationPointObject behindControlPoint]];
-                    behindPointFrontControlPoint = [self scaledPointForPoint:[behindPointObject frontControlPoint]];
-					
-                    if (selected) {
-                        [self drawCircleAtPoint:destinationPointBehindControlPoint color:[NSColor lightGrayColor] select:NO];
-                        [pathToControlPoints moveToPoint:destinationPointBehindControlPoint];
-                        [pathToControlPoints lineToPoint:destinationPoint];
-						
-                        [self drawCircleAtPoint:behindPointFrontControlPoint color:[NSColor lightGrayColor] select:NO];
-                        [pathToControlPoints moveToPoint:behindPointFrontControlPoint];
-                        [pathToControlPoints lineToPoint:behindPoint];
-                        [[NSColor lightGrayColor] setStroke];
-                        [pathToControlPoints stroke];
-                    }
-					
-                    [path curveToPoint:destinationPoint controlPoint1:behindPointFrontControlPoint controlPoint2:destinationPointBehindControlPoint];
-					
-					// no control points, draw a straight line
-                } else {
-                    //NSLog(@"Neither last nor destination point had a control point");
-                    [path lineToPoint:destinationPoint];
-                }
-            }
-			
-            if ([path isClosed]) [path closePath];
-            [path setLineWidth:self.lineWidth];
-			
-            // fill
-            if (self.shouldFill) {
+			// fill
+			if (self.shouldFill) {
 				if ([path feather] > 0) {
-					CGFloat gradientLocation = 1.0 - [path feather];
-					NSGradient *featherGradient = [[NSGradient alloc] initWithColorsAndLocations:self.fillColor, gradientLocation,
-																								 [NSColor clearColor], 1.0, nil];
-					[featherGradient drawInBezierPath:path relativeCenterPosition:NSMakePoint(0, 0)];
+					CGFloat featherAmount = [path feather] / 4;
+					RVBezierPath *pathCopy = [path copy];
+					RVBezierPath *insetPathCopy = [path copy];
+					[self constructPath:pathCopy];
+					[self constructPath:insetPathCopy];
+					CGRect pathCopyBounds = [pathCopy bounds];
+					CGFloat midX = NSMidX(pathCopyBounds);
+					CGFloat midY = NSMidY(pathCopyBounds);
+					
+					NSRect insetRect = NSInsetRect(pathCopyBounds, featherAmount*pathCopyBounds.size.width, featherAmount*pathCopyBounds.size.height);
+					CGFloat xScale = insetRect.size.width / pathCopyBounds.size.width;
+					CGFloat yScale = insetRect.size.height / pathCopyBounds.size.height;
+				    CGPoint centerPoint = NSMakePoint(midX, midY);
+					
+					NSAffineTransform *scaleTForm = [NSAffineTransform transform];
+					[scaleTForm translateXBy:centerPoint.x yBy:centerPoint.y];
+					[scaleTForm scaleXBy:xScale yBy:yScale];
+					[scaleTForm translateXBy:-centerPoint.x yBy:-centerPoint.y];
+					[insetPathCopy transformUsingAffineTransform:scaleTForm];
+					
+					[pathCopy setWindingRule:NSEvenOddWindingRule];
+					[pathCopy appendBezierPath:insetPathCopy];
+					
+					[self.fillColor set];
+					[NSGraphicsContext saveGraphicsState];
+					[pathCopy addClip];
+					NSShadow *shadow = [[NSShadow alloc] init];
+					[shadow setShadowBlurRadius:featherAmount*pathCopyBounds.size.width];
+					[shadow setShadowColor:self.fillColor];
+					[shadow set];
+					[insetPathCopy fill];
+					[insetPathCopy stroke];
+					[NSGraphicsContext restoreGraphicsState];
+					
+					[insetPathCopy fill];
 				} else {
 					[self.fillColor setFill];
 					[path fill];
@@ -519,9 +532,13 @@
 			
             // draw the actual, circular points last, so they show up on top of the lines
             for (int i = 0; i<[path.points count]; i++) {
-                BOOL selected = (selectedIndex == i && path == self.selectedPath);
                 NSPoint destinationPoint =  [self scaledPointForPoint:[[path.points objectAtIndex:i] point]];
-                [self drawCircleAtPoint:destinationPoint color:self.strokeColor select:selected];
+                if ([path isCircle] && i == 0) {
+					[self drawCircleAtPoint:destinationPoint color:[NSColor lightGrayColor] select:NO];
+				} else {
+					BOOL selected = (selectedIndex == i && path == self.selectedPath);
+					[self drawCircleAtPoint:destinationPoint color:self.strokeColor select:selected];
+				}
             }
 			
 ////////////// Selected path preview
@@ -875,7 +892,7 @@
         }
         if (!pointWasSelected) {
 			// check if a bounds handle was grabbed on the currently selected path
-			if ([self.selectedPath boundsHandleForPoint:mouseStartPoint] != RVBezierPathBoundsHandleNone) {
+			if (self.selectedPath && [self.selectedPath boundsHandleForPoint:mouseStartPoint] != RVBezierPathBoundsHandleNone) {
 				draggingPathBoundsHandle = YES;
 			} else {
 				// see if another path was selected
@@ -1560,6 +1577,13 @@
 	[self.coordinatesTextField setStringValue:coordinatesString];
 }
 
+- (IBAction) copy:(id)sender {
+	[self.pathEditorDelegate copyPath:self.selectedPath];
+}
+
+- (IBAction) paste:(id)sender {
+	[self.pathEditorDelegate pastePathToSelectedGroup];
+}
 
 #pragma mark - UNDO
 

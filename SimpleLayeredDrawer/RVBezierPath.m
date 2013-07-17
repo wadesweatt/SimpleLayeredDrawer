@@ -15,6 +15,13 @@
 #import "RVBezierPath.h"
 #import "RVPoint.h"
 
+#define kShouldClose @"shouldClose"
+#define kIsCicle @"isCicle"
+#define kIsRectangle @"isRectangle"
+#define kPoints @"points"
+#define kFeather @"feather"
+
+
 @implementation RVBezierPath
 
 + (RVBezierPath *) path {
@@ -25,6 +32,47 @@
     newPath.isRectangle = NO;
 	newPath.feather = 0;
     return newPath;
+}
+
+
+#pragma mark - BOILER PLATE
+
+- (id)initWithCoder:(NSCoder *)coder
+{
+    self = [super initWithCoder:coder];
+    if (self) {
+        self.shouldClose = [coder decodeBoolForKey:kShouldClose];
+		self.isCircle = [coder decodeBoolForKey:kIsCicle];
+		self.isRectangle = [coder decodeBoolForKey:kIsRectangle];
+		self.feather = [coder decodeDoubleForKey:kFeather];
+		self.points = [coder decodeObjectForKey:kPoints];
+    }
+    return self;
+}
+
+- (void) encodeWithCoder:(NSCoder *)aCoder {
+	[aCoder encodeBool:self.shouldClose forKey:kShouldClose];
+	[aCoder encodeBool:self.isCircle forKey:kIsCicle];
+	[aCoder encodeBool:self.isRectangle forKey:kIsRectangle];
+	[aCoder encodeDouble:self.feather forKey:kFeather];
+	[aCoder encodeObject:self.points forKey:kPoints];
+}
+
+- (NSString *) description {
+    return [NSString stringWithFormat:@"%@<%@>: points:%ld shouldClose:%@", [self className], self, [self.points count], self.shouldClose?@"YES":@"NO"];
+}
+
+- (void) copyPropertiesFrom:(RVBezierPath *)other {
+    self.shouldClose = other.isClosed;
+    self.points = [[NSMutableArray alloc] initWithArray:other.points copyItems:YES];
+    self.isRectangle = other.isRectangle;
+    self.isCircle = other.isCircle;
+}
+
+- (id) copyWithZone:(NSZone *)zone {
+	RVBezierPath *copy = [[self class] path];
+	[copy copyPropertiesFrom:self];
+	return copy;
 }
 
 
@@ -109,32 +157,12 @@
 }
 
 
-#pragma mark - BOILER PLATE
-
-- (NSString *) description {
-    return [NSString stringWithFormat:@"RVBezierPath: points:%ld shouldClose:%@", [self.points count], self.shouldClose?@"YES":@"NO"];
-}
-
-- (void) copyPropertiesFrom:(RVBezierPath *)other {
-    self.shouldClose = other.isClosed;
-    self.points = [[NSMutableArray alloc] initWithArray:other.points copyItems:YES];
-    self.isRectangle = other.isRectangle;
-    self.isCircle = other.isCircle;
-}
-
-- (id) copyWithZone:(NSZone *)zone {
-	RVBezierPath *copy = [[self class] path];
-	[copy copyPropertiesFrom:self];
-	return copy;
-}
-
-
 #pragma mark - CONSTRUCT
 // Used for rendering and in the editor table view cells
 // simply creates (but not draws) from the points in the points array
 // does not draw points, control points, selection, etc. - just the path
 - (void) createSelfFromPointArray {
-    [self removeAllPoints]; // removes internal NSBezierPath points, NOT RVBezierPath's array of points
+    [self removeAllPoints]; // removes internal NSBezierPath points, NOT RVBezierPath's array of stored points
     if ([self.points count] > 0) {
         // Draw each path
 

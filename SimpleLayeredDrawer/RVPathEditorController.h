@@ -15,7 +15,7 @@
 #import <Foundation/Foundation.h>
 #import "Protocols.h"
 
-@class RVPathGroup, CanvasView, RVPathTableViewController;
+@class RVPathGroup, RVBezierPath, CanvasView, RVPathTableViewController;
 
 @interface RVPathEditorController : NSObject <RVPathEditorDataSource, NSTableViewDataSource, NSTableViewDelegate>
 
@@ -28,7 +28,7 @@
 
 - (void) maskModeChanged:(NSInteger)currentMode;
 
-- (void) createNewGroup;
+- (RVPathGroup *) createNewGroup;
 - (void) deleteSelectedGroup;
 - (void) delete:(id)sender;
 

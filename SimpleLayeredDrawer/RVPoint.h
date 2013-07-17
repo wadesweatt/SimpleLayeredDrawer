@@ -15,7 +15,7 @@
 #import <Foundation/Foundation.h>
 #import "RVBezierPath.h"
 
-@interface RVPoint : NSObject <NSCopying>
+@interface RVPoint : NSObject <NSCopying, NSCoding>
 
 @property (nonatomic, assign) NSPoint point, frontControlPoint, behindControlPoint;
 @property (nonatomic, assign) BOOL hasPoint, frontControlPointSelected, behindControlPointSelected, hasFrontControlPoint, hasBehindControlPoint;

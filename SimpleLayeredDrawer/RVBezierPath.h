@@ -22,7 +22,7 @@ typedef enum _RVBezierPathBoundsHandle {
 	RVBezierPathBoundsHandleNone
 } RVBezierPathBoundsHandle;
 
-@interface RVBezierPath : NSBezierPath <NSCopying>
+@interface RVBezierPath : NSBezierPath <NSCopying, NSCoding>
 
 @property (nonatomic, strong) NSMutableArray *points;
 @property (nonatomic, assign, getter = isClosed) BOOL shouldClose;

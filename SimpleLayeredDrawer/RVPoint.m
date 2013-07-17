@@ -14,6 +14,11 @@
 
 #import "RVPoint.h"
 
+#define kPoint @"point"
+#define kBehindPoint @"behindPoint"
+#define kFrontPoint @"frontPoint"
+
+
 @implementation RVPoint
 
 - (id)init
@@ -30,15 +35,30 @@
 }
 
 - (id) initWithPoint:(NSPoint)point {
-    self = [super init];
+    self = [self init];
     if (self) {
         self.point = point;
-        self.frontControlPoint = NSZeroPoint;
-        self.behindControlPoint = NSZeroPoint;
-        self.frontControlPointSelected = NO;
+    }
+    return self;
+}
+
+- (id)initWithCoder:(NSCoder *)coder
+{
+    self = [super init];
+    if (self) {
+        self.point = [coder decodePointForKey:kPoint];
+		self.behindControlPoint = [coder decodePointForKey:kBehindPoint];
+		self.frontControlPoint = [coder decodePointForKey:kFrontPoint];
+		self.frontControlPointSelected = NO;
         self.behindControlPointSelected = NO;
     }
     return self;
+}
+
+- (void) encodeWithCoder:(NSCoder *)aCoder {
+	[aCoder encodePoint:self.point forKey:kPoint];
+	[aCoder encodePoint:self.behindControlPoint forKey:kBehindPoint];
+	[aCoder encodePoint:self.frontControlPoint forKey:kFrontPoint];
 }
 
 - (BOOL) hasPoint {

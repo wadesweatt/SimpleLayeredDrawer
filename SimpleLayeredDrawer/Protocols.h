@@ -14,15 +14,17 @@
 
 #import <Foundation/Foundation.h>
 
-@class RVPathGroup;
+@class RVPathGroup, RVBezierPath;
 
 @protocol RVPathEditorDataSource <NSObject>
 @required
 @property (nonatomic, strong) NSMutableArray *groups;
 @property (nonatomic, strong) RVPathGroup *selectedGroup;
 @property (nonatomic, assign) CGFloat scale;
-- (void) createNewGroup;
+- (RVPathGroup *) createNewGroup;
 - (void) maskModeChanged:(NSInteger)currentMode;
 - (void) registerPathUndoActionWithManager:(NSUndoManager *)manager userInfo:(NSDictionary *)undoDict;
 - (void) registerMaskUndoActionWithManager:(NSUndoManager *)manager userInfo:(NSDictionary *)undoDict;
+- (void) copyPath:(RVBezierPath *)path;
+- (void) pastePathToSelectedGroup;
 @end

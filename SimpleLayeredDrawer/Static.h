@@ -16,7 +16,6 @@
 
 #define RVReloadMaskTable @"RVReloadMaskTable"
 #define RVSelectRowInMaskTable @"RVSelectRowInMaskTable"
-#define RVPVPAddRemoveMask @"RVPVPAddRemoveMask"
 
 @interface NSEvent (ModifierKeys)
 // note that the class methods grab the current state of the modifier keys, not necessarily the state of the modifier keys at the time of the event in question

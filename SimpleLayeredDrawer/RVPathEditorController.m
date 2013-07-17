@@ -16,8 +16,12 @@
 #import "Static.h"
 #import "RVPathGroup.h"
 #import "RVBezierPath.h"
+#import "RVPoint.h"
 #import "RVPathTableViewController.h"
 #import "CanvasView.h"
+
+#define PATH_PASTEBOARD_TYPE @"PathPasteboardType"
+#define LAST_GROUP_NAME_PASTEBOARD_TYPE @"LastGroupNamePasteboardType"
 
 @implementation RVPathEditorController
 
@@ -33,35 +37,74 @@
     return self;
 }
 
-- (void) setShouldFill:(id)sender {
-    if ([sender state] == NSOnState) {
-        [self.canvas setShouldFill:YES];
-    } else {
-        [self.canvas setShouldFill:NO];
-    }
-    [self.canvas setNeedsDisplay:YES];
-}
-
-- (void) setShouldStroke:(id)sender {
-    if ([sender state] == NSOnState) {
-        [self.canvas setShouldStroke:YES];
-    } else {
-        [self.canvas setShouldStroke:NO];
-    }
-    [self.canvas setNeedsDisplay:YES];
-}
-
 - (void) maskModeChanged:(NSInteger)currentMode {
-	// TODO: Move mode action to controller and implement this delegate method
+	// TODO: Move mode action to this controller and implement this delegate method
 }
+
+- (void) copyPath:(RVBezierPath *)path {
+	if (path && path.points > 0) {
+		NSPasteboard *pboard = [NSPasteboard generalPasteboard];
+		[pboard declareTypes: [NSArray arrayWithObject:PATH_PASTEBOARD_TYPE] owner:self];
+		NSData *pathData = [NSKeyedArchiver archivedDataWithRootObject:[path copy]];
+		[pboard setData:pathData forType:PATH_PASTEBOARD_TYPE];
+		[pboard setString:self.selectedGroup.name forType:LAST_GROUP_NAME_PASTEBOARD_TYPE];
+		[self.canvas showActionNotificationWithText:@"Copy Shape"];
+	}
+}
+
+- (void) pastePathToSelectedGroup {
+	NSPasteboard *pboard = [NSPasteboard generalPasteboard];
+	if(![pboard dataForType:PATH_PASTEBOARD_TYPE]) return;
+	RVBezierPath *path = [NSKeyedUnarchiver unarchiveObjectWithData:[pboard dataForType:PATH_PASTEBOARD_TYPE]];
+	NSString *lastGroupName = [pboard stringForType:LAST_GROUP_NAME_PASTEBOARD_TYPE];
+	if (self.selectedGroup) {
+		if ([self.selectedGroup.name isEqualToString:lastGroupName]) {
+			[path removeAllPoints];
+			for (RVPoint *eachPoint in path.points) {
+				NSPoint pointVal = eachPoint.point;
+				pointVal.x += 10*self.scale;
+				pointVal.y -= 10*self.scale;
+				eachPoint.point = pointVal;
+				
+				if (eachPoint.hasBehindControlPoint) {
+					NSPoint behind = eachPoint.behindControlPoint;
+					behind.x += 10*self.scale;
+					behind.y -= 10*self.scale;
+					eachPoint.behindControlPoint = behind;
+				}
+				if (eachPoint.hasFrontControlPoint) {
+					NSPoint front = eachPoint.frontControlPoint;
+					front.x += 10*self.scale;
+					front.y -= 10*self.scale;
+					eachPoint.frontControlPoint = front;
+				}
+			}
+			
+			// put this new shape on the pasteboard in case multiple pastes are made. then we can offset each new paste.
+			NSPasteboard *pboard = [NSPasteboard generalPasteboard];
+			[pboard declareTypes: [NSArray arrayWithObject:PATH_PASTEBOARD_TYPE] owner:self];
+			NSData *pathData = [NSKeyedArchiver archivedDataWithRootObject:[path copy]];
+			[pboard setData:pathData forType:PATH_PASTEBOARD_TYPE];
+			[pboard setString:self.selectedGroup.name forType:LAST_GROUP_NAME_PASTEBOARD_TYPE];
+		}
+		[self.selectedGroup.paths addObject:path];
+	} else {
+		RVPathGroup *group = [self createNewGroup];
+		[group.paths addObject:path];
+	}
+	[self.pathsTableViewController.pathsTableView reloadData];
+	[self.canvas setNeedsDisplay:YES];
+	[self.canvas showActionNotificationWithText:@"Paste Shape"];
+}
+
 
 #pragma mark - TABLE DELEGATE/DATASOURCE
 
-- (NSInteger)numberOfRowsInTableView:(NSTableView *)aTableView {
+- (NSInteger) numberOfRowsInTableView:(NSTableView *)aTableView {
     return [self.groups count];
 }
 
-- (id)tableView:(NSTableView *)tableView objectValueForTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row {
+- (id) tableView:(NSTableView *)tableView objectValueForTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row {
     if (tableView == self.groupsTableView) {
         RVPathGroup *group = [self.groups objectAtIndex:row];
         if (!group) return nil;
@@ -75,7 +118,6 @@
     RVPathGroup *group = [self.groups objectAtIndex:row];
     if (!group) return;
     [group setName:(NSString *)object];
-    [[NSNotificationCenter defaultCenter] postNotificationName:RVPVPAddRemoveMask object:nil];
 }
 
 
@@ -97,7 +139,7 @@
 
 #pragma mark - ADD/DELETE
 
-- (void) createNewGroup {
+- (RVPathGroup *) createNewGroup {
     RVPathGroup *newGroup = [RVPathGroup group];
     [self.groups addObject:newGroup];
     [self.groupsTableView reloadData];
@@ -107,8 +149,7 @@
     [self.canvas setSelectedPath:[self.selectedGroup.paths lastObject]];
     [self.pathsTableViewController.pathsTableView reloadData];
     [self.canvas setNeedsDisplay:YES];
-    
-    [[NSNotificationCenter defaultCenter] postNotificationName:RVPVPAddRemoveMask object:nil];
+	return newGroup;
 }
 
 - (void) delete:(id)sender {
@@ -134,7 +175,6 @@
         [self.canvas setSelectedPath:[self.selectedGroup.paths lastObject]];
         [self.pathsTableViewController.pathsTableView reloadData];
         [self.canvas setNeedsDisplay:YES];
-        [[NSNotificationCenter defaultCenter] postNotificationName:RVPVPAddRemoveMask object:nil];
     }
 }
 
@@ -158,6 +198,24 @@
 
 
 #pragma mark - SETTERS
+
+- (void) setShouldFill:(id)sender {
+    if ([sender state] == NSOnState) {
+        [self.canvas setShouldFill:YES];
+    } else {
+        [self.canvas setShouldFill:NO];
+    }
+    [self.canvas setNeedsDisplay:YES];
+}
+
+- (void) setShouldStroke:(id)sender {
+    if ([sender state] == NSOnState) {
+        [self.canvas setShouldStroke:YES];
+    } else {
+        [self.canvas setShouldStroke:NO];
+    }
+    [self.canvas setNeedsDisplay:YES];
+}
 
 - (void) setScale:(CGFloat)scale {
 	if (_scale != scale) {
