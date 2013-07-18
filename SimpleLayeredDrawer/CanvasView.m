@@ -1440,33 +1440,33 @@
 	for (int i = 0; i<self.selectedPath.points.count; i++) {
 		NSPoint thePoint = [self.selectedPath.points[i] point];
 		NSPoint controlPoint = thePoint;
-		NSPoint beforeCurve = NSZeroPoint;
 		NSPoint afterCurve = NSZeroPoint;
+		NSPoint beforeCurve = NSZeroPoint;
 		
 		if (NSEqualPoints(thePoint, NSMakePoint(NSMinX(bounds), NSMinY(bounds)))) { // bottom left
-			beforeCurve = NSMakePoint(thePoint.x + Default_Corner_Radius*scale, thePoint.y);
-			afterCurve = NSMakePoint(thePoint.x, thePoint.y + Default_Corner_Radius*scale);
+			afterCurve = NSMakePoint(thePoint.x + Default_Corner_Radius*scale, thePoint.y);
+			beforeCurve = NSMakePoint(thePoint.x, thePoint.y + Default_Corner_Radius*scale);
 			
 		} else if (NSEqualPoints(thePoint, NSMakePoint(NSMaxX(bounds), NSMinY(bounds)))) { // bottom right
-			beforeCurve = NSMakePoint(thePoint.x, thePoint.y + Default_Corner_Radius*scale);
-			afterCurve = NSMakePoint(thePoint.x - Default_Corner_Radius*scale, thePoint.y);
+			afterCurve = NSMakePoint(thePoint.x, thePoint.y + Default_Corner_Radius*scale);
+			beforeCurve = NSMakePoint(thePoint.x - Default_Corner_Radius*scale, thePoint.y);
 			
 		} else if (NSEqualPoints(thePoint, NSMakePoint(NSMinX(bounds), NSMaxY(bounds)))) { // top left
-			beforeCurve = NSMakePoint(thePoint.x, thePoint.y - Default_Corner_Radius*scale);
-			afterCurve = NSMakePoint(thePoint.x + Default_Corner_Radius*scale, thePoint.y);
+			afterCurve = NSMakePoint(thePoint.x, thePoint.y - Default_Corner_Radius*scale);
+			beforeCurve = NSMakePoint(thePoint.x + Default_Corner_Radius*scale, thePoint.y);
 			
 		} else if (NSEqualPoints(thePoint, NSMakePoint(NSMaxX(bounds), NSMaxY(bounds)))) { // top right
-			beforeCurve = NSMakePoint(thePoint.x - Default_Corner_Radius*scale, thePoint.y);
-			afterCurve = NSMakePoint(thePoint.x, thePoint.y - Default_Corner_Radius*scale);
+			afterCurve = NSMakePoint(thePoint.x - Default_Corner_Radius*scale, thePoint.y);
+			beforeCurve = NSMakePoint(thePoint.x, thePoint.y - Default_Corner_Radius*scale);
 		}
 		
-		RVPoint *afterCurveObject = [[RVPoint alloc] initWithPoint:afterCurve];
-		[afterCurveObject setFrontControlPoint:controlPoint];
-		[newPoints addObject:afterCurveObject];
-		
 		RVPoint *beforeCurveObject = [[RVPoint alloc] initWithPoint:beforeCurve];
-		[beforeCurveObject setBehindControlPoint:controlPoint];
+		[beforeCurveObject setFrontControlPoint:controlPoint];
 		[newPoints addObject:beforeCurveObject];
+		
+		RVPoint *afterCurveObject = [[RVPoint alloc] initWithPoint:afterCurve];
+		[afterCurveObject setBehindControlPoint:controlPoint];
+		[newPoints addObject:afterCurveObject];
 	}
 	[self.selectedPath setPoints:newPoints];
 	[self.selectedPath setIsRectangle:NO];
