@@ -479,6 +479,7 @@
 			if (self.shouldFill) {
 				if ([path feather] > 0) {
 					CGFloat featherAmount = [path feather] / 4;
+										
 					RVBezierPath *pathCopy = [path copy];
 					RVBezierPath *insetPathCopy = [path copy];
 					[self constructPath:pathCopy];
@@ -502,6 +503,7 @@
 					[pathCopy appendBezierPath:insetPathCopy];
 					
 					[self.fillColor set];
+					[insetPathCopy fill];
 					[NSGraphicsContext saveGraphicsState];
 					[pathCopy addClip];
 					NSShadow *shadow = [[NSShadow alloc] init];
@@ -509,10 +511,7 @@
 					[shadow setShadowColor:self.fillColor];
 					[shadow set];
 					[insetPathCopy fill];
-					[insetPathCopy stroke];
 					[NSGraphicsContext restoreGraphicsState];
-					
-					[insetPathCopy fill];
 				} else {
 					[self.fillColor setFill];
 					[path fill];
@@ -766,7 +765,6 @@
         // new path each click
         RVBezierPath *newPath = [RVBezierPath path];
         newPath.isRectangle = YES;
-        newPath.shouldClose = YES;
         [self.pathEditorDelegate.selectedGroup.paths addObject:newPath];
         self.selectedPath = newPath;
         pointsArchive = nil;
@@ -782,7 +780,6 @@
         topRight.parentPath = self.selectedPath;
         topLeft.parentPath = self.selectedPath;
 		
-		//[self registerUndoForPathChangesWithName:@"Create Rectangle"];
         [self.selectedPath.points addObject:bottomRight];
         [self.selectedPath.points addObject:topRight];
         [self.selectedPath.points addObject:topLeft];
@@ -1431,6 +1428,51 @@
 
 #pragma mark - MENU
 
+#define Default_Corner_Radius 25.0
+
+- (void) roundRectangleCorners {
+	NSString *message = @"Round Corners";
+	[self registerUndoForPathChangesWithName:message];
+	[self showActionNotificationWithText:message];
+	
+	NSMutableArray *newPoints = [NSMutableArray arrayWithCapacity:self.selectedPath.points.count];
+	CGRect bounds = self.selectedPath.bounds;
+	for (int i = 0; i<self.selectedPath.points.count; i++) {
+		NSPoint thePoint = [self.selectedPath.points[i] point];
+		NSPoint controlPoint = thePoint;
+		NSPoint beforeCurve = NSZeroPoint;
+		NSPoint afterCurve = NSZeroPoint;
+		
+		if (NSEqualPoints(thePoint, NSMakePoint(NSMinX(bounds), NSMinY(bounds)))) { // bottom left
+			beforeCurve = NSMakePoint(thePoint.x + Default_Corner_Radius*scale, thePoint.y);
+			afterCurve = NSMakePoint(thePoint.x, thePoint.y + Default_Corner_Radius*scale);
+			
+		} else if (NSEqualPoints(thePoint, NSMakePoint(NSMaxX(bounds), NSMinY(bounds)))) { // bottom right
+			beforeCurve = NSMakePoint(thePoint.x, thePoint.y + Default_Corner_Radius*scale);
+			afterCurve = NSMakePoint(thePoint.x - Default_Corner_Radius*scale, thePoint.y);
+			
+		} else if (NSEqualPoints(thePoint, NSMakePoint(NSMinX(bounds), NSMaxY(bounds)))) { // top left
+			beforeCurve = NSMakePoint(thePoint.x, thePoint.y - Default_Corner_Radius*scale);
+			afterCurve = NSMakePoint(thePoint.x + Default_Corner_Radius*scale, thePoint.y);
+			
+		} else if (NSEqualPoints(thePoint, NSMakePoint(NSMaxX(bounds), NSMaxY(bounds)))) { // top right
+			beforeCurve = NSMakePoint(thePoint.x - Default_Corner_Radius*scale, thePoint.y);
+			afterCurve = NSMakePoint(thePoint.x, thePoint.y - Default_Corner_Radius*scale);
+		}
+		
+		RVPoint *afterCurveObject = [[RVPoint alloc] initWithPoint:afterCurve];
+		[afterCurveObject setFrontControlPoint:controlPoint];
+		[newPoints addObject:afterCurveObject];
+		
+		RVPoint *beforeCurveObject = [[RVPoint alloc] initWithPoint:beforeCurve];
+		[beforeCurveObject setBehindControlPoint:controlPoint];
+		[newPoints addObject:beforeCurveObject];
+	}
+	[self.selectedPath setPoints:newPoints];
+	[self.selectedPath setIsRectangle:NO];
+	[self setNeedsDisplay:YES];
+}
+
 - (void) removeControlPointsAtSelection {
 	
 	NSString *message = @"Flatten";
@@ -1488,29 +1530,39 @@
 }
 
 - (NSMenu *) menuForEvent:(NSEvent *)event {
+	if (!self.selectedPath) return nil;
 	if (drawingMode == RVDrawingModeSelectTool && !(NSControlKeyMask & [NSEvent modifierFlags])) {
-        selectedIndex = -1;
-        RVPoint *selectedPoint = nil;
-        for (int i = 0; i<[self.selectedPath.points count]; i++) {
-            RVPoint *pointObject = [self.selectedPath.points objectAtIndex:i];
-            NSPoint thisPoint = [self scaledPointForPoint:pointObject.point];
-            if ((ABS(mouseLocation.x - thisPoint.x)) < RVSELECTION_RADIUS && (ABS(mouseLocation.y - thisPoint.y)) < RVSELECTION_RADIUS) {
-                selectedIndex = i;
-                selectedPoint = pointObject;
-                break;
-            }
-        }
-        if (selectedIndex > -1 && selectedIndex < [self.selectedPath.points count]) {
-			if ([selectedPoint hasBehindControlPoint] || [selectedPoint hasFrontControlPoint]) {
-				NSMenu *menu = [[NSMenu alloc] initWithTitle:@"Flatten Menu"];
-				[menu addItemWithTitle:@"Flatten" action:@selector(removeControlPointsAtSelection) keyEquivalent:@""];
-				return menu;
-			} else if (![selectedPoint hasBehindControlPoint] && ![selectedPoint hasFrontControlPoint]) {
-				NSMenu *menu = [[NSMenu alloc] initWithTitle:@"Smooth Menu"];
-				[menu addItemWithTitle:@"Smooth" action:@selector(addControlPointsToSelection) keyEquivalent:@""];
-				return menu;
+		
+		if (self.selectedPath.isRectangle && NSPointInRect(mouseLocation, self.selectedPath.controlPointBounds)) {
+			NSMenu *menu = [[NSMenu alloc] initWithTitle:@"Round Menu"];
+			[menu addItemWithTitle:@"Round Corners" action:@selector(roundRectangleCorners) keyEquivalent:@""];
+			return menu;
+		} else if (self.selectedPath.isCircle) {
+			return nil;
+		} else {
+			selectedIndex = -1;
+			RVPoint *selectedPoint = nil;
+			for (int i = 0; i<[self.selectedPath.points count]; i++) {
+				RVPoint *pointObject = [self.selectedPath.points objectAtIndex:i];
+				NSPoint thisPoint = [self scaledPointForPoint:pointObject.point];
+				if ((ABS(mouseLocation.x - thisPoint.x)) < RVSELECTION_RADIUS && (ABS(mouseLocation.y - thisPoint.y)) < RVSELECTION_RADIUS) {
+					selectedIndex = i;
+					selectedPoint = pointObject;
+					break;
+				}
 			}
-        }
+			if (selectedIndex > -1 && selectedIndex < [self.selectedPath.points count]) {
+				if ([selectedPoint hasBehindControlPoint] || [selectedPoint hasFrontControlPoint]) {
+					NSMenu *menu = [[NSMenu alloc] initWithTitle:@"Flatten Menu"];
+					[menu addItemWithTitle:@"Flatten" action:@selector(removeControlPointsAtSelection) keyEquivalent:@""];
+					return menu;
+				} else if (![selectedPoint hasBehindControlPoint] && ![selectedPoint hasFrontControlPoint]) {
+					NSMenu *menu = [[NSMenu alloc] initWithTitle:@"Smooth Menu"];
+					[menu addItemWithTitle:@"Smooth" action:@selector(addControlPointsToSelection) keyEquivalent:@""];
+					return menu;
+				}
+			}
+		}
 	}
 	return nil;
 }
@@ -1588,7 +1640,7 @@
 #pragma mark - UNDO
 
 - (void) registerUndoForPathChangesWithName:(NSString *)undoName {
-	NSMutableArray *pointsCopy = [[NSMutableArray alloc] initWithArray:pointsArchive copyItems:YES];
+	NSMutableArray *pointsCopy = [[NSMutableArray alloc] initWithArray:pointsArchive.count>0?pointsArchive:self.selectedPath.points copyItems:YES];
 	BOOL created = createdRectOrCircle;
 	NSDictionary *dictionary = [NSDictionary dictionaryWithObjectsAndKeys:undoName, @"message", pointsCopy, @"objects", self.selectedPath, @"path", [NSNumber numberWithBool:created], @"created", nil];
 	[self.pathEditorDelegate registerPathUndoActionWithManager:[self undoManager] userInfo:dictionary];
