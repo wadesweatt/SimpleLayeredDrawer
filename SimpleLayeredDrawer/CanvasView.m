@@ -27,7 +27,7 @@
 #define RVPATHBOUNDS_LINE_WIDTH 1.0
 #define RVPATHBOUNDS_SELECTED_LINE_WIDTH 3.0
 
-RVBezierPathBoundsHandle boundsHandle;
+RVBezierPathBoundsHandle boundsHandle = RVBezierPathBoundsHandleNone;
 
 @implementation CanvasView
 
@@ -893,8 +893,7 @@ RVBezierPathBoundsHandle boundsHandle;
         if (!pointWasSelected) {
 			// check if a bounds handle was grabbed on the currently selected path
 			if (self.selectedPath && [self.selectedPath boundsHandleForPoint:mouseStartPoint] != RVBezierPathBoundsHandleNone) {
-				boundsHandle = [self.selectedPath boundsHandleForPoint:mouseStartPoint];
-				NSLog(@"draggingPathBoundsHandle");
+				boundsHandle = [self.selectedPath boundsHandleForPoint:mouseLocation];
 			} else {
 				// see if another path was selected
 				for (NSInteger i = 0; i<[self.pathEditorDelegate.selectedGroup.paths count]; i++) {
@@ -1193,7 +1192,6 @@ RVBezierPathBoundsHandle boundsHandle;
             controlPoint.x += distanceVectorEndpoint.x;
             controlPoint.y += distanceVectorEndpoint.y;
             control.point = controlPoint;
-			
             break;
         }
     }
