@@ -27,6 +27,8 @@
 #define RVPATHBOUNDS_LINE_WIDTH 1.0
 #define RVPATHBOUNDS_SELECTED_LINE_WIDTH 3.0
 
+RVBezierPathBoundsHandle boundsHandle;
+
 @implementation CanvasView
 
 - (id)initWithFrame:(NSRect)frame {
@@ -53,9 +55,9 @@
 
 - (void) awakeFromNib {
 	[self.coordinatesTextField setStringValue:@""];
-	self.strokeColor = [NSColor orangeColor];
-	self.fillColor = [NSColor orangeColor];
-	self.selectedColor = [NSColor orangeColor];
+	self.strokeColor = [NSColor blackColor];
+	self.fillColor = [NSColor blackColor];
+	self.selectedColor = [NSColor greenColor];
 }
 
 - (IBAction) selectedPathFeatherDidChange:(id)sender {
@@ -144,10 +146,10 @@
     }
     [boundsOutline stroke];
 	
-	if (path.isRectangle || path.isCircle) return;
+	if (!path.isCircle) return;
 	
-#define HANDLE_LENGTH 5.0
-	// construct the resizing handles
+#define HANDLE_LENGTH 8.0 * scale
+	// construct the resizing handles - currently only supported for circles
 	[boundsOutline removeAllPoints];
 	
 	NSPoint origin = bounds.origin;
@@ -181,12 +183,12 @@
 	[boundsOutline moveToPoint:topRight];
 	[boundsOutline lineToPoint:NSMakePoint(topRight.x, topRight.y - HANDLE_LENGTH)];
 	
-	if (draggingPathBoundsHandle) {
+	if (boundsHandle != RVBezierPathBoundsHandleNone) {
 		[[NSColor greenColor] setStroke];
 	} else {
 		[[NSColor grayColor] setStroke];
 	}
-	[boundsOutline setLineWidth:3.0];
+	[boundsOutline setLineWidth:2.0];
 	[boundsOutline stroke];
 }
 
@@ -216,7 +218,7 @@
 - (void) circlePathForPath:(RVBezierPath *)path {
     if (path.isCircle && [path.points count] == 2) {
         NSPoint center = [self scaledPointForPoint:[[path.points objectAtIndex:0] point]];
-        NSPoint control = [self scaledPointForPoint:[[path.points lastObject] point]];
+        //NSPoint control = [self scaledPointForPoint:[[path.points lastObject] point]];
         CGFloat radius = [path radius]*scale;
         if (radius > 0) {
             CGFloat xMin = center.x - radius;
@@ -243,7 +245,7 @@
         }
         return;
     }
-    NSLog(@"%s Received invalid circle", __PRETTY_FUNCTION__);
+    NSLog(@"%s Received invalid circle for path: %@", __PRETTY_FUNCTION__, path);
 }
 
 - (void) constructPath:(RVBezierPath *)path {
@@ -804,7 +806,7 @@
         createdRectOrCircle = YES;
 		
         RVPoint *center = [[RVPoint alloc] initWithPoint:NSMakePoint(mouseStartPoint.x  / scale, mouseStartPoint.y  / scale)];
-        RVPoint *control = [[RVPoint alloc] initWithPoint:NSMakePoint(mouseStartPoint.x  / scale, mouseStartPoint.y  / scale)];
+        RVPoint *control = [[RVPoint alloc] initWithPoint:NSMakePoint(mouseStartPoint.x + 1  / scale, mouseStartPoint.y + 1 / scale)];
 		
         center.parentPath = self.selectedPath;
         control.parentPath = self.selectedPath;
@@ -819,11 +821,12 @@
 #pragma mark Selection Tool
     else {
 		// Arc creation in selection mode
-        // ctrl
-        // create an arc around the selected point
+        // requires ctrl modifier
+        // creates control points before and after the selected point
         if (NSControlKeyMask & [NSEvent modifierFlags] && selectedIndex > -1 && selectedIndex < self.selectedPath.points.count && self.selectedPath.canContainArc) {
-			[self registerUndoForPathChangesWithName:@"Create Arc"];
-			[self showActionNotificationWithText:@"Create Arc"];
+			NSString *message = @"Create Arc";
+			[self registerUndoForPathChangesWithName:message];
+			[self showActionNotificationWithText:message];
 			
 			RVPoint *selectedPoint = self.selectedPath.points[selectedIndex];
 			selectedPoint.frontControlPoint = NSMakePoint(mouseStartPoint.x  / scale, mouseStartPoint.y  / scale);
@@ -890,7 +893,8 @@
         if (!pointWasSelected) {
 			// check if a bounds handle was grabbed on the currently selected path
 			if (self.selectedPath && [self.selectedPath boundsHandleForPoint:mouseStartPoint] != RVBezierPathBoundsHandleNone) {
-				draggingPathBoundsHandle = YES;
+				boundsHandle = [self.selectedPath boundsHandleForPoint:mouseStartPoint];
+				NSLog(@"draggingPathBoundsHandle");
 			} else {
 				// see if another path was selected
 				for (NSInteger i = 0; i<[self.pathEditorDelegate.selectedGroup.paths count]; i++) {
@@ -925,7 +929,7 @@
 			
 #pragma mark Select Tool Drag
         case RVDrawingModeSelectTool: {
-            if (selectedIndex > -1 && [self.selectedPath.points count] > selectedIndex && pointWasSelected) {
+            if (selectedIndex > -1 && self.selectedPath.points.count > selectedIndex && pointWasSelected) {
                 RVPoint *pointDragged = [self.selectedPath.points objectAtIndex:selectedIndex];
                 // rectangle
                 if (self.selectedPath.isRectangle) {
@@ -1063,7 +1067,7 @@
 					
                     break;
 					
-				// plain path
+				// plain bezier path
                 } else {
                     if (pointDragged.frontControlPointSelected) pointDragged.frontControlPoint = dragPoint;
                     else if (pointDragged.behindControlPointSelected) pointDragged.behindControlPoint = dragPoint;
@@ -1106,10 +1110,9 @@
                 }
                 draggingPath = YES;
 				break;
-            } else if (draggingPathBoundsHandle) {
+            } else if (boundsHandle != RVBezierPathBoundsHandleNone) {
 				NSPoint distanceVectorEndpoint = NSMakePoint(dragPoint.x - lastDragPoint.x, dragPoint.y - lastDragPoint.y);
-				RVBezierPathBoundsHandle handle = [self.selectedPath boundsHandleForPoint:lastDragPoint];
-				[self.selectedPath scaleAndTranslatePointsWithHandle:handle byTranslationVector:distanceVectorEndpoint];
+				[self.selectedPath scaleAndTranslatePointsWithHandle:boundsHandle byTranslationVector:distanceVectorEndpoint];
 				break;
 			}
             break;
@@ -1204,7 +1207,7 @@
 		
 		// undo/action message stuff
 		NSString *message = nil;
-		if (!pathWasSelected && !createdRectOrCircle) { // drag to resize or alter shape
+		if (!pathWasSelected && !createdRectOrCircle && selectedIndex < self.selectedPath.points.count) { // drag to resize or alter shape
 			RVPoint *draggedPoint = [self.selectedPath.points objectAtIndex:selectedIndex];
 			message = (draggedPoint.frontControlPointSelected || draggedPoint.behindControlPointSelected) ? @"Drag Control Point" : @"Drag Point";
 		} else if (!pathWasSelected && createdRectOrCircle) { // drag when creating circle or rectangle
@@ -1221,7 +1224,7 @@
         dragged = NO;
         pathWasSelected = NO;
         draggingPath = NO;
-		draggingPathBoundsHandle = NO;
+		boundsHandle = RVBezierPathBoundsHandleNone;
         lastDragPoint = NSZeroPoint;
         [[NSNotificationCenter defaultCenter] postNotificationName:RVReloadMaskTable object:nil];
         [self setNeedsDisplay:YES];
@@ -1244,10 +1247,10 @@
 		[[NSCursor arrowCursor] set];
 	}
 	
-    if ([self.selectedPath.points count] > 0) {
+    if (self.selectedPath.points.count > 0) {
 		closePathOnClick = NO;
-        for (int i = 0; i<[self.selectedPath.points count]; i++) {
-            RVPoint *pointObject = [self.selectedPath.points objectAtIndex:i];
+        for (int i = 0; i < self.selectedPath.points.count; i++) {
+            RVPoint *pointObject = self.selectedPath.points[i];
             NSPoint thisPoint = [self scaledPointForPoint:pointObject.point];
             if ((ABS(mouseLocation.x - thisPoint.x)) < RVSELECTION_RADIUS && (ABS(mouseLocation.y - thisPoint.y)) < RVSELECTION_RADIUS) {
                 [[NSCursor pointingHandCursor] set];

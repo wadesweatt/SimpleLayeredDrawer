@@ -59,7 +59,7 @@
 }
 
 - (NSString *) description {
-    return [NSString stringWithFormat:@"%@<%@>: points:%ld shouldClose:%@", [self className], self, [self.points count], self.shouldClose?@"YES":@"NO"];
+    return [NSString stringWithFormat:@"%@<%p>: points:%ld shouldClose:%@", [self className], self, [self.points count], self.shouldClose?@"YES":@"NO"];
 }
 
 - (void) copyPropertiesFrom:(RVBezierPath *)other {
@@ -79,7 +79,8 @@
 #pragma mark - SCALING
 
 - (RVBezierPathBoundsHandle) boundsHandleForPoint:(NSPoint)location {
-	if (self.isRectangle || self.isCircle || NSEqualPoints(location, NSZeroPoint)) return RVBezierPathBoundsHandleNone;
+	// TODO: implement use with bezier paths (not just circles)
+	if (!self.isCircle || NSEqualPoints(location, NSZeroPoint)) return RVBezierPathBoundsHandleNone;
 	
 	CGFloat radius = 10.0;
 	CGRect bounds = self.bounds;
@@ -101,59 +102,73 @@
 }
 
 - (void) scaleAndTranslatePointsWithHandle:(RVBezierPathBoundsHandle)handle byTranslationVector:(NSPoint)translation {
-	CGFloat xChange = translation.x;
-	CGFloat yChange = translation.y;
-	CGFloat midX = NSMidX([self bounds]);
-	CGFloat midY = NSMidY([self bounds]);
 	
-	switch (handle) {
-		case RVBezierPathBoundsHandleBottomLeft: {
-			for (RVPoint *eachPoint in self.points) {
-				NSPoint point = [eachPoint point];
-				if (point.x < midX && point.y < midY) {
-					point.x += xChange;
-					point.y += yChange;
-					[eachPoint setPoint:point];
-				}
-			}
-			break;
-		}
-		case RVBezierPathBoundsHandleBottomRight: {
-			for (RVPoint *eachPoint in self.points) {
-				NSPoint point = [eachPoint point];
-				if (point.x > midX && point.y < midY) {
-					point.x += xChange;
-					point.y += yChange;
-					[eachPoint setPoint:point];
-				}
-			}
-			break;
-		}
-		case RVBezierPathBoundsHandleTopLeft: {
-			for (RVPoint *eachPoint in self.points) {
-				NSPoint point = [eachPoint point];
-				if (point.x < midX && point.y > midY) {
-					point.x += xChange;
-					point.y += yChange;
-					[eachPoint setPoint:point];
-				}
-			}
-			break;
-		}
-		case RVBezierPathBoundsHandleTopRight: {
-			for (RVPoint *eachPoint in self.points) {
-				NSPoint point = [eachPoint point];
-				if (point.x > midX && point.y > midY) {
-					point.x += xChange;
-					point.y += yChange;
-					[eachPoint setPoint:point];
-				}
-			}
-			break;
-		}
-		case RVBezierPathBoundsHandleNone:
-			break;
+	if (self.isCircle && self.points.count == 2) {
+		NSPoint centerPoint = [self.points[0] point];
+		CGFloat newRadius = (handle == RVBezierPathBoundsHandleBottomLeft || handle == RVBezierPathBoundsHandleTopLeft) ? [self radius] - translation.x : [self radius] + translation.x;
+		//CGFloat newRadius = sqrtf( powf((translation.x - centerPoint.x), 2) +  powf((translation.y - centerPoint.y), 2) );
+		
+		RVPoint *radiusPointObject = [self.points lastObject];
+		NSPoint radiusPoint = NSZeroPoint;
+		radiusPoint.x = centerPoint.x + newRadius;
+		radiusPoint.y = centerPoint.y;
+		[radiusPointObject setPoint:radiusPoint];
 	}
+	
+	//CGFloat xChange = translation.x;
+	//CGFloat yChange = translation.y;
+	
+//	CGFloat midX = NSMidX([self bounds]);
+//	CGFloat midY = NSMidY([self bounds]);
+//	
+//	switch (handle) {
+//		case RVBezierPathBoundsHandleBottomLeft: {
+//			for (RVPoint *eachPoint in self.points) {
+//				NSPoint point = [eachPoint point];
+//				if (point.x < midX && point.y < midY) {
+//					point.x += xChange;
+//					point.y += yChange;
+//					[eachPoint setPoint:point];
+//				}
+//			}
+//			break;
+//		}
+//		case RVBezierPathBoundsHandleBottomRight: {
+//			for (RVPoint *eachPoint in self.points) {
+//				NSPoint point = [eachPoint point];
+//				if (point.x > midX && point.y < midY) {
+//					point.x += xChange;
+//					point.y += yChange;
+//					[eachPoint setPoint:point];
+//				}
+//			}
+//			break;
+//		}
+//		case RVBezierPathBoundsHandleTopLeft: {
+//			for (RVPoint *eachPoint in self.points) {
+//				NSPoint point = [eachPoint point];
+//				if (point.x < midX && point.y > midY) {
+//					point.x += xChange;
+//					point.y += yChange;
+//					[eachPoint setPoint:point];
+//				}
+//			}
+//			break;
+//		}
+//		case RVBezierPathBoundsHandleTopRight: {
+//			for (RVPoint *eachPoint in self.points) {
+//				NSPoint point = [eachPoint point];
+//				if (point.x > midX && point.y > midY) {
+//					point.x += xChange;
+//					point.y += yChange;
+//					[eachPoint setPoint:point];
+//				}
+//			}
+//			break;
+//		}
+//		case RVBezierPathBoundsHandleNone:
+//			break;
+//	}
 }
 
 
@@ -246,12 +261,12 @@
     }
 }
 
-
-#pragma mark - CIRCLE
-
 - (BOOL) canContainArc {
     return (!self.isRectangle && !self.isCircle);
 }
+
+
+#pragma mark - CIRCLE
 
 - (CGFloat) radius {
     if (self.isCircle && [self.points count] == 2) {

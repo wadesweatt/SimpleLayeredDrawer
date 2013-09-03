@@ -41,6 +41,9 @@
 	// TODO: Move mode action to this controller and implement this delegate method
 }
 
+
+#pragma mark - COPY/PASTE
+
 - (void) copyPath:(RVBezierPath *)path {
 	if (path && path.points > 0) {
 		NSPasteboard *pboard = [NSPasteboard generalPasteboard];
@@ -156,7 +159,7 @@
     // masks table
     if ([sender tag] == 5) {
         [self deleteSelectedGroup];
-    // layers/shapes table
+    // paths table
     } else {
         [self.pathsTableViewController delete:nil];
     }
@@ -169,31 +172,13 @@
         [self.groups removeObjectAtIndex:selectedRow];
         [self.groupsTableView removeRowsAtIndexes:[NSIndexSet indexSetWithIndex:selectedRow] withAnimation:NSTableViewAnimationSlideUp];
 		NSInteger rowCount = [self.groupsTableView numberOfRows];
-		if (rowCount > 0) [self.groupsTableView selectRowIndexes:[NSIndexSet indexSetWithIndex:(rowCount -1 )] byExtendingSelection:NO];
+		if (rowCount > 0) [self.groupsTableView selectRowIndexes:[NSIndexSet indexSetWithIndex:(rowCount - 1)] byExtendingSelection:NO];
         [self.groupsTableView endUpdates];
         [self setSelectedGroup:[[self groups] lastObject]];
         [self.canvas setSelectedPath:[self.selectedGroup.paths lastObject]];
         [self.pathsTableViewController.pathsTableView reloadData];
         [self.canvas setNeedsDisplay:YES];
     }
-}
-
-
-#pragma mark - DRAWING ATTRIBUTES
-
-- (IBAction)doSetStrokeColor:(id)sender {
-    NSColor *newColor = [(NSColorWell *)sender color];
-    [self.canvas setStrokeColor:newColor];
-}
-
-- (IBAction)doSetFillColor:(id)sender {
-    NSColor *newColor = [(NSColorWell *)sender color];
-    [self.canvas setFillColor:newColor];
-}
-
-- (IBAction)doSetSelectedColor:(id)sender {
-    NSColor *newColor = [(NSColorWell *)sender color];
-    [self.canvas setSelectedColor:newColor];
 }
 
 
